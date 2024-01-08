@@ -10,6 +10,9 @@ node_modules/
 
 # generated files
 dist/
+public/
+.cache/
+.aws/
 
 # ===============
 # .prettierignore
