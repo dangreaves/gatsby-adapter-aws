@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "license": "MIT",
-  "exports": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "exports": {
+    "./cdk.js": "./dist/cdk/index.js",
+    "./adapter.js": "./dist/adapter/index.js"
+  },
   "bin": "./dist/cli/main.js",
   "files": [
     "dist"
@@ -16,8 +18,11 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "build": "npm run build:package && npm run build:examples",
-    "build:package": "tsup && cp -r src/assets dist/assets",
-    "build:examples": "for i in {basic,gatsby-functions,ssr}; do npm run build --workspace $i; done"
+    "build:package": "tsup && cp -r src/assets dist/",
+    "build:examples": "for i in {basic,gatsby-functions,ssr}; do npm run build --workspace $i; done",
+    "clean": "npm run clean:package && npm run clean:examples",
+    "clean:package": "rm -rf dist",
+    "clean:examples": "for i in {basic,gatsby-functions,ssr}; do (cd examples/$i && rm -rf .aws public .cache); done"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.485.0",

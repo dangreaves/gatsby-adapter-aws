@@ -11,7 +11,7 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
 import type { IFunctionDefinition } from "gatsby";
 
-import type { Manifest } from "./manifest.js";
+import type { Manifest } from "../manifest.js";
 
 // Shim _dirname for ESM.
 import { fileURLToPath } from "url";
@@ -146,7 +146,10 @@ export class GatsbySite extends Construct {
       "StaticViewerRequestFunction",
       {
         code: cloudfront.FunctionCode.fromFile({
-          filePath: path.join(__dirname, "assets/static-viewer-request-fn.js"),
+          filePath: path.resolve(
+            __dirname,
+            "../assets/static-viewer-request-fn.js",
+          ),
         }),
       },
     );
@@ -157,9 +160,9 @@ export class GatsbySite extends Construct {
       "PageDataViewerRequestFunction",
       {
         code: cloudfront.FunctionCode.fromFile({
-          filePath: path.join(
+          filePath: path.resolve(
             __dirname,
-            "assets/page-data-viewer-request-fn.js",
+            "../assets/page-data-viewer-request-fn.js",
           ),
         }),
       },

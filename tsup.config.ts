@@ -3,5 +3,10 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   dts: true,
   format: ["esm"],
-  entry: ["src/index.ts", "src/handler.ts", "src/cli/main.ts"],
+  entry: [
+    "src/cli/main.ts",
+    "src/cdk/index.ts",
+    "src/adapter/index.ts",
+    "src/adapter/handler.ts",
+  ],
 });

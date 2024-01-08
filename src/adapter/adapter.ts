@@ -3,7 +3,8 @@ import path from "node:path";
 import type { AdapterInit } from "gatsby";
 
 import { prepareFunction } from "./functions.js";
-import { buildManifest, type HeaderMap } from "./manifest.js";
+
+import { buildManifest, type HeaderMap } from "../manifest.js";
 
 export interface AdapterOptions {
   headerMap?: HeaderMap;
