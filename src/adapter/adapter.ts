@@ -25,7 +25,7 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
       await fs.emptyDir(adapterDir);
 
       // Output log message.
-      reporter.log("@bared/gatsby-adapter-aws: Starting compilation.");
+      reporter.log("@dangreaves/gatsby-adapter-aws: Starting compilation.");
 
       // Resolve header map.
       const headerMap: HeaderMap = options?.headerMap ?? DEFAULT_HEADER_MAP;
@@ -60,7 +60,7 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
 
       // Output success message.
       reporter.log(
-        `@bared/gatsby-adapter-aws: Finished compilation in ${
+        `@dangreaves/gatsby-adapter-aws: Finished compilation in ${
           0 < elapsedS ? `${elapsedS}s ` : ""
         }${elapsedMs}ms.`,
       );
