@@ -7,7 +7,7 @@ import type { Construct } from "constructs";
 
 import { GatsbySite } from "./GatsbySite.js";
 
-describe("basic static", () => {
+describe("basic", () => {
   class Stack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
       super(scope, id, props);
@@ -23,12 +23,44 @@ describe("basic static", () => {
 
   test("does not create any lambda functions", () => {
     const template = Template.fromStack(new Stack(new cdk.App(), "Stack", {}));
-    const resources = template.findResources("AWS::Lambda::Function");
 
-    expect(Object.values(resources)).toHaveLength(1);
+    const lambdaFns = template.findResources("AWS::Lambda::Function");
 
-    expect(Object.keys(resources)[0]).toMatch(
-      "CustomS3AutoDeleteObjectsCustomResource",
+    const relevantLambdaFns = Object.keys(lambdaFns).filter(
+      (key) => !key.includes("CustomS3AutoDeleteObjectsCustomResource"),
     );
+
+    expect(relevantLambdaFns).toHaveLength(0);
+  });
+});
+
+describe("gatsby-functions", () => {
+  class Stack extends cdk.Stack {
+    constructor(scope: Construct, id: string, props: cdk.StackProps) {
+      super(scope, id, props);
+      new GatsbySite(this, "GatsbySite", {
+        gatsbyDir: "examples/gatsby-functions",
+      });
+    }
+  }
+
+  test("creates cloudfront distribution", () => {
+    const template = Template.fromStack(new Stack(new cdk.App(), "Stack", {}));
+
+    template.resourceCountIs("AWS::CloudFront::Distribution", 1);
+  });
+
+  test("creates a lambda function for gatsby function", () => {
+    const template = Template.fromStack(new Stack(new cdk.App(), "Stack", {}));
+
+    const lambdaFns = template.findResources("AWS::Lambda::Function");
+
+    const relevantLambdaFns = Object.keys(lambdaFns).filter(
+      (key) => !key.includes("CustomS3AutoDeleteObjectsCustomResource"),
+    );
+
+    expect(relevantLambdaFns).toHaveLength(1);
+
+    expect(relevantLambdaFns[0]).toMatch("GatsbySiteFunctionhelloworld");
   });
 });
