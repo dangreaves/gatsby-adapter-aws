@@ -1,12 +1,7 @@
 {
-  "name": "my-gatsby-site",
+  "name": "gatsby-functions",
   "version": "1.0.0",
   "private": true,
-  "description": "my-gatsby-site",
-  "author": "Dan Greaves",
-  "keywords": [
-    "gatsby"
-  ],
   "scripts": {
     "develop": "gatsby develop",
     "start": "gatsby develop",
