@@ -146,7 +146,7 @@ export class GatsbySite extends Construct {
       "StaticViewerRequestFunction",
       {
         code: cloudfront.FunctionCode.fromFile({
-          filePath: path.join(__dirname, "static-viewer-request-fn.js"),
+          filePath: path.join(__dirname, "assets/static-viewer-request-fn.js"),
         }),
       },
     );
@@ -157,7 +157,10 @@ export class GatsbySite extends Construct {
       "PageDataViewerRequestFunction",
       {
         code: cloudfront.FunctionCode.fromFile({
-          filePath: path.join(__dirname, "page-data-viewer-request-fn.js"),
+          filePath: path.join(
+            __dirname,
+            "assets/page-data-viewer-request-fn.js",
+          ),
         }),
       },
     );
