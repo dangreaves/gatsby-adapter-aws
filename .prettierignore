@@ -1,0 +1,18 @@
+# ==========
+# .gitignore
+# ==========
+
+# dependencies
+node_modules/
+
+# misc
+.DS_Store
+
+# generated files
+dist/
+
+# ===============
+# .prettierignore
+# ===============
+
+package-lock.json
