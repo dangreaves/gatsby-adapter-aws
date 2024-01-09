@@ -1,0 +1,24 @@
+{
+  "name": "cdk-project",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "version": "0.0.0",
+  "scripts": {
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "bootstrap": "cdk bootstrap",
+    "synthesize": "cdk synthesize"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.116.1",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@dangreaves/gatsby-adapter-aws": "file:../../",
+    "@tsconfig/node20": "^20.1.2",
+    "@tsconfig/strictest": "^2.0.2",
+    "@types/node": "^20.10.7",
+    "tsx": "^4.0.0"
+  }
+}
