@@ -124,7 +124,7 @@ export const DEFAULT_CACHE_CONTROL_MAP: CacheControlMap = {
  * in favour of configuring security headers through CloudFront, which is much easier
  * than trying to disable them in Gatsby.
  */
-const REMOVE_GATSBY_HEADERS = [
+export const REMOVE_GATSBY_HEADERS = [
   "x-xss-protection",
   "x-content-type-options",
   "referrer-policy",

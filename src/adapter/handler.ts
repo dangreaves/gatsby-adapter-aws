@@ -3,6 +3,8 @@ import { configure } from "@vendia/serverless-express";
 
 import type { Request, Response } from "express";
 
+import { REMOVE_GATSBY_HEADERS } from "../manifest.js";
+
 type GatsbyHandler = (req: Request, res: Response) => Promise<unknown>;
 
 /**
@@ -31,8 +33,19 @@ const gatsbyHandler =
 const app = express();
 
 // Register a route which listens to all requests.
-app.all("*", async (req, res) => {
+app.all("*", async (req, res, next) => {
   await gatsbyHandler(req, res);
+  next();
+});
+
+/**
+ * Remove Gatsby generated security headers.
+ * These are difficult to disable from Gatsby itself, so it's better to add these
+ * via CloudFront if needed.
+ */
+app.use((_req, res, next) => {
+  for (const header of REMOVE_GATSBY_HEADERS) res.removeHeader(header);
+  next();
 });
 
 /**
