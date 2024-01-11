@@ -51,6 +51,19 @@ export async function prepareFunction(
     to: `import __GATSBY_HANDLER__ from "./${entryPointName}";`,
   });
 
+  // Copy Dockerfile.
+  await fs.copyFile(
+    path.join(__dirname, "../assets/Dockerfile"),
+    path.join(functionDir, "Dockerfile"),
+  );
+
+  // Replace entrypoint in Dockerfile.
+  await replaceInFile.default.replaceInFile({
+    files: path.join(functionDir, "Dockerfile"),
+    from: "__HANDLER_PATH__",
+    to: path.join(entryPointDir, "handler.js"),
+  });
+
   // Bundle handler using esbuild.
   await esbuild.build({
     bundle: true,
@@ -106,6 +119,8 @@ const ALLOWED_PATTERNS: string[] = [
   ".cache/query-engine/**/*",
   // Files in the public dir are dynamically imported by Gatsby when needed.
   "public/**/*",
+  // Required for docker targets (e.g. Fargate).
+  "Dockerfile",
 ];
 
 /**
