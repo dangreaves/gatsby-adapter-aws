@@ -13,9 +13,7 @@ import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
-import type { IFunctionDefinition } from "gatsby";
-
-import type { Manifest } from "../manifest.js";
+import type { Manifest, FunctionDefinition } from "../types.js";
 
 // Shim _dirname for ESM.
 import { fileURLToPath } from "url";
@@ -105,7 +103,7 @@ export interface GatsbySiteProps {
    */
   ssrExecutorOptions?: ExecutorOptions;
   /** Resolve executor options for the given function. */
-  resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
+  resolveExecutorOptions?: (fn: FunctionDefinition) => ExecutorOptions;
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */

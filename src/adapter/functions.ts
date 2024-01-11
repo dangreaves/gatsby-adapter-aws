@@ -3,7 +3,8 @@ import path from "node:path";
 import esbuild from "esbuild";
 import { minimatch } from "minimatch";
 import * as replaceInFile from "replace-in-file";
-import type { IFunctionDefinition } from "gatsby";
+
+import type { FunctionDefinition } from "../types.js";
 
 // Shim _dirname for ESM.
 import { fileURLToPath } from "url";
@@ -12,7 +13,7 @@ const getDirname = () => path.dirname(getFilename());
 const __dirname = getDirname();
 
 export async function prepareFunction(
-  fn: IFunctionDefinition,
+  fn: FunctionDefinition,
   { gatsbyDir, adapterDir }: { gatsbyDir: string; adapterDir: string },
 ) {
   // Resolve and ensur function dir exists.

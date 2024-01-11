@@ -3,8 +3,7 @@ import path from "node:path";
 import type { AdapterInit } from "gatsby";
 
 import { prepareFunction } from "./functions.js";
-
-import { buildManifest, type CacheControlMap } from "../manifest.js";
+import { buildManifest, type CacheControlMap } from "./manifest.js";
 
 export interface AdapterOptions {
   cacheControl?: CacheControlMap;

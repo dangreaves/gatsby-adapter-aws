@@ -3,7 +3,7 @@ import { configure } from "@vendia/serverless-express";
 
 import type { Request, Response } from "express";
 
-import { REMOVE_GATSBY_HEADERS } from "../manifest.js";
+import { REMOVE_GATSBY_HEADERS } from "../constants.js";
 
 type GatsbyHandler = (req: Request, res: Response) => Promise<unknown>;
 

@@ -2,13 +2,9 @@ import { ulid } from "ulid";
 import { minimatch } from "minimatch";
 import type { RoutesManifest, FunctionsManifest } from "gatsby";
 
-export interface Manifest {
-  buildId: string;
-  routes: RoutesManifest;
-  functions: FunctionsManifest;
-}
+import { REMOVE_GATSBY_HEADERS } from "../constants.js";
 
-type Route = RoutesManifest[0];
+import type { Manifest, Route } from "../types.js";
 
 type Header = { key: string; value: string };
 
@@ -110,23 +106,10 @@ function dedupeHeaders(headers: Header[]): Header[] {
 }
 
 // Default cache control map.
-export const DEFAULT_CACHE_CONTROL_MAP: CacheControlMap = {
+const DEFAULT_CACHE_CONTROL_MAP: CacheControlMap = {
   "/*.js": "IMMUTABLE",
   "/*.js.map": "IMMUTABLE",
   "/*.css": "IMMUTABLE",
   "/page-data/app-data.json": "NO_CACHE",
   "/~partytown/**": "NO_CACHE",
 };
-
-/**
- * Gatsby headers to remove.
- * These headers are automatically added to the manifest by Gatsby, but we remove them
- * in favour of configuring security headers through CloudFront, which is much easier
- * than trying to disable them in Gatsby.
- */
-export const REMOVE_GATSBY_HEADERS = [
-  "x-xss-protection",
-  "x-content-type-options",
-  "referrer-policy",
-  "x-frame-options",
-];
