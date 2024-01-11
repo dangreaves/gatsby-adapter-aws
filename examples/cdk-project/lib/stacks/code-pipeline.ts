@@ -36,7 +36,7 @@ export class CodePipelineStack extends cdk.Stack {
             commands: ["npm install"],
           },
           pre_build: {
-            commands: ["npm run build"],
+            commands: ["npm run build", "npm run build --workspace ssr"],
           },
           build: {
             commands: [
