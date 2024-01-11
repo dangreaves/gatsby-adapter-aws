@@ -5,8 +5,12 @@ import { Construct } from "constructs";
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
+import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
 import type { IFunctionDefinition } from "gatsby";
@@ -19,40 +23,110 @@ const getFilename = () => fileURLToPath(import.meta.url);
 const getDirname = () => path.dirname(getFilename());
 const __dirname = getDirname();
 
+type ExecutorOptionsDisabled = { target: "DISABLED" };
+type ExecutorOptionsLambda = {
+  target: "LAMBDA";
+  /**
+   * Timeout duration for Lambda function.
+   * Defaults to 30 seconds for the SSR engine, and 1 minute for other functions.
+   */
+  timeout?: lambda.FunctionOptions["timeout"];
+  /**
+   * Memory size for Lambda function.
+   * Defaults to 2gb for SSR engine, 512mb for other functions.
+   */
+  memorySize?: lambda.FunctionOptions["memorySize"];
+  /**
+   * Override Lambda function options.
+   * Use timeout and memorySize instead of this.
+   */
+  functionOptions?: Omit<lambda.FunctionOptions, "timeout" | "memorySize">;
+  /**
+   * Provisioned concurrency configuration for the alias.
+   */
+  provisionedConcurrentExecutions?: lambda.AliasOptions["provisionedConcurrentExecutions"];
+};
+type ExecutorOptionsFargate = {
+  target: "FARGATE";
+  /**
+   * vCPU size for ECS task.
+   * Defaults to 1024 (1 vCPU) for all tasks.
+   * */
+  cpu?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["cpu"];
+  /**
+   * The amount (in MiB) of memory used by the task.
+   * Defaults to 2048 (2 GB) for all tasks.
+   */
+  memoryLimitMiB?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["memoryLimitMiB"];
+};
+type ExecutorOptions =
+  | ExecutorOptionsDisabled
+  | ExecutorOptionsLambda
+  | ExecutorOptionsFargate;
+
+interface ExecutorLambda extends ExecutorBase {
+  target: "LAMBDA";
+  lambdaAlias: lambda.Alias;
+  lambdaFunction: lambda.Function;
+  lambdaFunctionUrl: lambda.FunctionUrl;
+  lambdaFunctionUrlDomain: string;
+}
+interface ExecutorFargate extends ExecutorBase {
+  target: "FARGATE";
+  fargateService: ecs.FargateService;
+  loadBalancer: elb.ApplicationLoadBalancer;
+}
+interface ExecutorBase {
+  executorId: string;
+}
+type Executor = ExecutorLambda | ExecutorFargate;
+
+/** Function ID given by Gatsby for the SSR engine. */
+const SSR_ENGINE_FUNCTION_ID = "ssr-engine";
+
+/** Executors run in Lambda by default. */
+const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
+  target: "LAMBDA",
+};
+
+interface CacheBehaviorOptions {
+  /**
+   * Array of Lambda@Edge functions to attach to this behavior.
+   */
+  edgeLambdas?: NonNullable<cloudfront.BehaviorOptions["edgeLambdas"]>;
+}
+
 export interface GatsbySiteProps {
-  /* Absolute path to Gatsby directory. */
+  /** Path to Gatsby directory. */
   gatsbyDir: string;
-  /* Disable the SSR function. */
-  disableSsr?: boolean | undefined;
+  /**
+   * Executor options for SSR engine.
+   * Defaults to using a Lambda function.
+   */
+  ssrExecutorOptions?: ExecutorOptions;
+  /** Resolve executor options for the given function. */
+  resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
+  /** Custom cache behavior options */
+  cacheBehaviorOptions?: {
+    /** Cache behavior options for default route (including SSR engine) */
+    default?: CacheBehaviorOptions;
+    /** Cache behavior options for static assets (prefixed by /assets) */
+    assets?: CacheBehaviorOptions;
+    /** Cache behavior options for functions (not including SSR engine) */
+    functions?: CacheBehaviorOptions;
+  };
+  /** Custom CloudFront distribution options */
+  distributionOptions?: Partial<
+    Omit<cloudfront.DistributionProps, "domainNames" | "certificate">
+  >;
+  /** Custom domain names */
+  domainNames?: cloudfront.DistributionProps["domainNames"];
+  /** SSL certificate */
+  certificate?: cloudfront.DistributionProps["certificate"];
   /* Create a deployment role for the given principal. */
   deploymentRolePrinciple?: iam.IPrincipal;
-  /* Modify cache behavior for assets */
-  assetCacheBehavior?: (
-    cacheBehavior: cloudfront.BehaviorOptions,
-  ) => cloudfront.BehaviorOptions;
-  /* Modify cache behavior for default routes */
-  defaultCacheBehavior?: (
-    cacheBehavior: cloudfront.BehaviorOptions,
-  ) => cloudfront.BehaviorOptions;
-  /* Modify cache behavior for functions (SSR engine uses default cache!). */
-  functionCacheBehavior?: (
-    fn: IFunctionDefinition,
-    cacheBehavior: cloudfront.BehaviorOptions,
-  ) => cloudfront.BehaviorOptions;
-  /* Modify CloudFront distribution props */
-  distributionProps?: (
-    props: cloudfront.DistributionProps,
-  ) => cloudfront.DistributionProps;
-  /* Modify Lambda function props */
-  functionProps?: (
-    fn: IFunctionDefinition,
-    props: lambda.FunctionProps,
-  ) => lambda.FunctionProps;
-  /* Modify Lambda function alias options */
-  functionAliasOptions?: (
-    fn: IFunctionDefinition,
-    props: lambda.AliasOptions,
-  ) => lambda.AliasOptions;
+  /** VPC (Required for Fargate executors). */
+  vpc?: ec2.IVpc;
 }
 
 export class GatsbySite extends Construct {
@@ -63,66 +137,153 @@ export class GatsbySite extends Construct {
     scope: Construct,
     id: string,
     {
+      vpc,
       gatsbyDir,
-      disableSsr,
+      domainNames,
+      certificate,
+      distributionOptions,
+      cacheBehaviorOptions,
+      resolveExecutorOptions,
       deploymentRolePrinciple,
-      functionProps = (_fn, props) => props,
-      functionAliasOptions = (_fn, props) => props,
-      distributionProps = (props) => props,
-      assetCacheBehavior = (cacheBehavior) => cacheBehavior,
-      defaultCacheBehavior = (cacheBehavior) => cacheBehavior,
-      functionCacheBehavior = (_fn, cacheBehavior) => cacheBehavior,
+      ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
     super(scope, id);
 
     // Resolve path for adapter dir.
-    const adapterDir = path.join(gatsbyDir, ".aws");
+    const adapterDir = path.resolve(gatsbyDir, ".aws");
 
     // Read manifest file.
     const manifest = fs.readJSONSync(
       path.join(adapterDir, "manifest.json"),
     ) as Manifest;
 
-    // Construct lambda functions.
-    const functions = manifest.functions
-      .filter((fn) => {
-        if (!!disableSsr && "ssr-engine" === fn.functionId) return false;
-        return true;
-      })
-      .map((fn) => {
-        const entryPointDir = path.dirname(fn.pathToEntryPoint);
+    // Resolve executor options for each manifest function.
+    const fnsWithExecutorOptions = manifest.functions.map((fn) => {
+      const isSsrEngine = SSR_ENGINE_FUNCTION_ID === fn.functionId;
 
-        const lambdaFn = new lambda.Function(
+      const executorOptions = isSsrEngine
+        ? ssrExecutorOptions
+        : resolveExecutorOptions?.(fn) ?? DEFAULT_EXECUTOR_OPTIONS;
+
+      const functionDir = path.join(adapterDir, "functions", fn.functionId);
+
+      return {
+        ...fn,
+        isSsrEngine,
+        functionDir,
+        executorOptions,
+      };
+    });
+
+    // At least one executor uses fargate.
+    const needsFargate = fnsWithExecutorOptions.some(
+      ({ executorOptions }) => "FARGATE" === executorOptions.target,
+    );
+
+    // Check that VPC is defined if fargate needed.
+    if (needsFargate && "undefined" === typeof vpc) {
+      throw new Error(
+        "You must provide a VPC when using the FARGATE executor target.",
+      );
+    }
+
+    // Configure ECS cluster if needed.
+    const cluster =
+      needsFargate && "undefined" !== typeof vpc
+        ? new ecs.Cluster(this, "Cluster", { vpc })
+        : null;
+
+    // Resolve executors for each manifest function.
+    const executors = fnsWithExecutorOptions.reduce((acc, fn) => {
+      const { executorOptions, isSsrEngine } = fn;
+
+      if ("DISABLED" === executorOptions.target) return acc;
+
+      const entryPointDir = path.dirname(fn.pathToEntryPoint);
+
+      if ("LAMBDA" === executorOptions.target) {
+        const lambdaFunction = new lambda.Function(
           this,
           `Function-${fn.functionId}`,
-          functionProps(fn, {
-            memorySize: "ssr-engine" === fn.functionId ? 1024 : 512,
+          {
             handler: `${entryPointDir}/handler.handler`,
-            timeout: cdk.Duration.minutes(1),
+            timeout:
+              executorOptions.timeout ?? isSsrEngine
+                ? cdk.Duration.seconds(30)
+                : cdk.Duration.minutes(1),
+            memorySize: executorOptions.memorySize ?? isSsrEngine ? 1024 : 512,
             runtime: lambda.Runtime.NODEJS_18_X,
-            code: lambda.Code.fromAsset(
-              path.join(gatsbyDir, ".aws", "functions", fn.functionId),
-            ),
-          }),
+            code: lambda.Code.fromAsset(fn.functionDir),
+            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
+          },
         );
 
-        // Alias used to apply provisioned concurrency.
-        const alias = lambdaFn.addAlias(
-          "current",
-          functionAliasOptions(fn, {}),
-        );
+        const lambdaAlias = lambdaFunction.addAlias("current", {
+          ...(executorOptions.provisionedConcurrentExecutions
+            ? {
+                provisionedConcurrentExecutions:
+                  executorOptions.provisionedConcurrentExecutions,
+              }
+            : {}),
+        });
 
-        const lambdaFnUrl = alias.addFunctionUrl({
+        const lambdaFunctionUrl = lambdaAlias.addFunctionUrl({
           authType: lambda.FunctionUrlAuthType.NONE,
         });
 
-        return {
-          ...fn,
-          lambdaFn,
-          lambdaFnUrl,
+        const executor: ExecutorLambda = {
+          executorId: fn.functionId,
+          target: "LAMBDA",
+          lambdaAlias,
+          lambdaFunction,
+          lambdaFunctionUrl,
+          /**
+           * Resolve domain from the Lambda function URL (which includes a protocol).
+           * CloudFront HTTP origins can only use a domain.
+           */
+          lambdaFunctionUrlDomain: cdk.Fn.select(
+            2,
+            cdk.Fn.split("/", lambdaFunctionUrl.url),
+          ),
         };
-      });
+
+        return [...acc, executor];
+      }
+
+      if ("FARGATE" === executorOptions.target) {
+        if (!cluster) {
+          throw new Error(
+            "Cannot construct a FARGATE executor target without a cluster.",
+          );
+        }
+
+        const service = new ecsPatterns.ApplicationLoadBalancedFargateService(
+          this,
+          `Service-${fn.functionId}`,
+          {
+            cluster,
+            cpu: executorOptions.cpu ?? 1024,
+            memoryLimitMiB: executorOptions.memoryLimitMiB ?? 2048,
+            circuitBreaker: { rollback: true },
+            taskImageOptions: {
+              image: ecs.ContainerImage.fromAsset(fn.functionDir),
+            },
+          },
+        );
+
+        const executor: ExecutorFargate = {
+          executorId: fn.functionId,
+          target: "FARGATE",
+          fargateService: service.service,
+          loadBalancer: service.loadBalancer,
+        };
+
+        return [...acc, executor];
+      }
+
+      return acc;
+    }, [] as Executor[]);
 
     // Create bucket to store static assets.
     const bucket = new s3.Bucket(this, "Bucket", {
@@ -130,14 +291,14 @@ export class GatsbySite extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Attempt to resolve SSR engine function.
-    const ssrFn = functions.find(
-      ({ functionId }) => "ssr-engine" === functionId,
+    // Attempt to resolve SSR engine executor.
+    const ssrEngineExecutor = executors.find(
+      ({ executorId }) => SSR_ENGINE_FUNCTION_ID === executorId,
     );
 
-    // Resolve additional functions.
-    const additionalFns = functions.filter(
-      ({ functionId }) => "ssr-engine" !== functionId,
+    // Resolve additional executors.
+    const additionalExecutors = executors.filter(
+      ({ executorId }) => SSR_ENGINE_FUNCTION_ID !== executorId,
     );
 
     // Construct CloudFront viewer request function for static assets.
@@ -169,91 +330,97 @@ export class GatsbySite extends Construct {
     );
 
     // Construct default cache behavior.
-    const defaultBehavior = defaultCacheBehavior(
-      ssrFn
-        ? {
-            origin: new origins.HttpOrigin(
-              // Get domain from function URL.
-              cdk.Fn.select(2, cdk.Fn.split("/", ssrFn.lambdaFnUrl.url)),
-            ),
-            viewerProtocolPolicy:
-              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          }
-        : {
-            origin: new origins.S3Origin(bucket),
-            viewerProtocolPolicy:
-              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            functionAssociations: [
-              {
-                function: staticViewerRequestFn,
-                eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-              },
-            ],
-          },
-    );
+    const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineExecutor
+      ? {
+          ...cacheBehaviorOptions?.default,
+          origin:
+            "LAMBDA" === ssrEngineExecutor.target
+              ? new origins.HttpOrigin(
+                  ssrEngineExecutor.lambdaFunctionUrlDomain,
+                )
+              : new origins.LoadBalancerV2Origin(
+                  ssrEngineExecutor.loadBalancer,
+                  { protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY },
+                ),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        }
+      : {
+          ...cacheBehaviorOptions?.default,
+          origin: new origins.S3Origin(bucket),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          functionAssociations: [
+            {
+              function: staticViewerRequestFn,
+              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+            },
+          ],
+        };
 
     // Construct CloudFront distribution.
-    const distribution = new cloudfront.Distribution(
-      this,
-      "Distribution",
-      distributionProps({
-        ...(ssrFn ? {} : { defaultRootObject: "index.html" }),
-        errorResponses: [
-          {
-            httpStatus: 403,
-            responseHttpStatus: 404,
-            responsePagePath: "/404/index.html",
-          },
-        ],
-        defaultBehavior,
-        additionalBehaviors: {
-          // Gatsby puts page-data files into the asset prefix, but we actually need these to go
-          // to the SSR engine instead, with the asset prefix trimmed off.
-          ...(ssrFn
-            ? {
-                "*page-data.json": {
-                  ...defaultBehavior,
-                  functionAssociations: [
-                    ...(defaultBehavior.functionAssociations ?? []),
-                    {
-                      function: pageDataViewerRequestFn,
-                      eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-                    },
-                  ],
-                },
-              }
-            : {}),
-          // Assets must use asset prefix to avoid hitting SSR behavior.
-          // https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/asset-prefix/
-          "/assets/*": assetCacheBehavior({
-            origin: new origins.S3Origin(bucket),
-            viewerProtocolPolicy:
-              cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            functionAssociations: [
-              {
-                function: staticViewerRequestFn,
-                eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-              },
-            ],
-          }),
-          // Add a new behavior for each additional function.
-          ...additionalFns.reduce(
-            (acc, fn) => ({
-              ...acc,
-              [fn.name]: functionCacheBehavior(fn, {
-                origin: new origins.HttpOrigin(
-                  // Get domain from function URL.
-                  cdk.Fn.select(2, cdk.Fn.split("/", fn.lambdaFnUrl.url)),
-                ),
-                viewerProtocolPolicy:
-                  cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-              }),
-            }),
-            {} as Record<string, cloudfront.BehaviorOptions>,
-          ),
+    const distribution = new cloudfront.Distribution(this, "Distribution", {
+      ...distributionOptions,
+      ...(domainNames ? { domainNames } : {}),
+      ...(certificate ? { certificate } : {}),
+      ...(ssrEngineExecutor ? {} : { defaultRootObject: "index.html" }),
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 404,
+          responsePagePath: "/404/index.html",
         },
-      }),
-    );
+      ],
+      defaultBehavior,
+      additionalBehaviors: {
+        // Gatsby puts page-data files into the asset prefix, but we actually need these to go
+        // to the SSR engine instead, with the asset prefix trimmed off.
+        ...(ssrEngineExecutor
+          ? {
+              "*page-data.json": {
+                ...defaultBehavior,
+                functionAssociations: [
+                  ...(defaultBehavior.functionAssociations ?? []),
+                  {
+                    function: pageDataViewerRequestFn,
+                    eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+                  },
+                ],
+              },
+            }
+          : {}),
+        // Assets must use asset prefix to avoid hitting SSR behavior.
+        // https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/asset-prefix/
+        "/assets/*": {
+          ...cacheBehaviorOptions?.assets,
+          origin: new origins.S3Origin(bucket),
+          viewerProtocolPolicy:
+            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          functionAssociations: [
+            {
+              function: staticViewerRequestFn,
+              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+            },
+          ],
+        },
+        // Add a new behavior for each additional function.
+        ...additionalExecutors.reduce(
+          (acc, executor) => ({
+            ...acc,
+            [executor.executorId]: {
+              ...cacheBehaviorOptions?.functions,
+              origin:
+                "LAMBDA" === executor.target
+                  ? new origins.HttpOrigin(executor.lambdaFunctionUrlDomain)
+                  : new origins.LoadBalancerV2Origin(executor.loadBalancer),
+              viewerProtocolPolicy:
+                cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            },
+          }),
+          {} as Record<string, cloudfront.BehaviorOptions>,
+        ),
+      },
+    });
 
     // Output the bucket name.
     new cdk.CfnOutput(this, "BucketOutput", {
