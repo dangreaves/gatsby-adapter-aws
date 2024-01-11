@@ -23,11 +23,28 @@ export async function prepareFunction(
   // Copy each required file into function dir.
   for (const requiredFile of fn.requiredFiles) {
     const sourcePath = path.join(gatsbyDir, requiredFile);
+    const targetPath = path.join(functionDir, requiredFile);
 
     // Paths included in requiredFiles might not actually exist.
     if (!(await fs.pathExists(sourcePath))) continue;
 
-    await fs.copy(sourcePath, path.join(functionDir, requiredFile));
+    // Copy file to function directory.
+    await fs.copy(sourcePath, targetPath);
+
+    /**
+     * If this is the function index, patch BASE_HEADERS to empty.
+     * This sucks, but there's no other way to get rid of security headers
+     * from Gatsby without fiddling with every config.
+     * Security headers should be managed from CloudFront, where it's much easier
+     * to configure.
+     */
+    if (/\.cache\/[\w-]+\/index\.js/.test(requiredFile)) {
+      await replaceInFile.default.replaceInFile({
+        files: targetPath,
+        from: /const BASE_HEADERS = \[[^\]]+\];/,
+        to: `const BASE_HEADERS = [];`,
+      });
+    }
   }
 
   // Calculate which dir the entrypoint lives in.
