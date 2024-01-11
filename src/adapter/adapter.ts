@@ -4,10 +4,10 @@ import type { AdapterInit } from "gatsby";
 
 import { prepareFunction } from "./functions.js";
 
-import { buildManifest, type HeaderMap } from "../manifest.js";
+import { buildManifest, type CacheControlMap } from "../manifest.js";
 
 export interface AdapterOptions {
-  headerMap?: HeaderMap;
+  cacheControl?: CacheControlMap;
 }
 
 export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
@@ -27,16 +27,13 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
       // Output log message.
       reporter.log("@dangreaves/gatsby-adapter-aws: Starting compilation.");
 
-      // Resolve header map.
-      const headerMap: HeaderMap = options?.headerMap ?? DEFAULT_HEADER_MAP;
-
       // Write manifest file.
       await fs.writeJSON(
         path.join(adapterDir, "manifest.json"),
         buildManifest({
-          headerMap,
           routesManifest,
           functionsManifest,
+          cacheControl: options?.cacheControl,
         }),
       );
 
@@ -66,19 +63,4 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
       );
     },
   };
-};
-
-// https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/caching/
-export const CACHE_CONTROL_NO_CACHE = "public, max-age=0, must-revalidate";
-export const CACHE_CONTROL_IMMUTABLE = "public, max-age=31536000, immutable";
-
-// Default header map.
-export const DEFAULT_HEADER_MAP: HeaderMap = {
-  "/*.js": [{ key: "cache-control", value: CACHE_CONTROL_IMMUTABLE }],
-  "/*.js.map": [{ key: "cache-control", value: CACHE_CONTROL_IMMUTABLE }],
-  "/*.css": [{ key: "cache-control", value: CACHE_CONTROL_IMMUTABLE }],
-  "/page-data/app-data.json": [
-    { key: "cache-control", value: CACHE_CONTROL_NO_CACHE },
-  ],
-  "/~partytown/**": [{ key: "cache-control", value: CACHE_CONTROL_NO_CACHE }],
 };
