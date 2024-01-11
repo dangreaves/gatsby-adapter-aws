@@ -24,8 +24,8 @@ export class CodePipelineStack extends cdk.Stack {
 
     const deployProject = new codebuild.PipelineProject(this, "DeployProject", {
       environment: {
-        buildImage: codebuild.LinuxBuildImage.fromDockerRegistry(
-          "public.ecr.aws/docker/library/node:20",
+        buildImage: codebuild.LinuxBuildImage.fromCodeBuildImageId(
+          "aws/codebuild/standard:7.0",
         ),
         computeType: codebuild.ComputeType.SMALL,
       },
