@@ -1,10 +1,19 @@
+import { createHash } from "node:crypto";
+
+import mime from "mime";
 import { ulid } from "ulid";
 import { minimatch } from "minimatch";
 import type { RoutesManifest, FunctionsManifest } from "gatsby";
 
 import { REMOVE_GATSBY_HEADERS } from "../constants.js";
 
-import type { Manifest, Route } from "../types.js";
+import type {
+  Route,
+  Asset,
+  Manifest,
+  AssetGroup,
+  StaticRoute,
+} from "../types.js";
 
 type Header = { key: string; value: string };
 
@@ -17,6 +26,8 @@ export class ManifestBuilder {
   readonly routes: Manifest["routes"];
 
   readonly functions: Manifest["functions"];
+
+  readonly assetGroups: Manifest["assetGroups"];
 
   constructor({
     cacheControl,
@@ -37,6 +48,9 @@ export class ManifestBuilder {
 
     // Map functions.
     this.functions = functionsManifest;
+
+    // Map asset groups.
+    this.assetGroups = this.mapAssetGroups(this.routes);
   }
 
   /**
@@ -47,6 +61,7 @@ export class ManifestBuilder {
       routes: this.routes,
       buildId: this.buildId,
       functions: this.functions,
+      assetGroups: this.assetGroups,
     };
   }
 
@@ -90,12 +105,68 @@ export class ManifestBuilder {
       });
     });
 
-    // @todo Allow custom headers.
+    // @todo Allow custom headers? Will need to be added to asset groups too.
 
     return {
       ...route,
       headers: dedupeHeaders(headers),
     };
+  }
+
+  /**
+   * Map asset groups.
+   *
+   * Here, we take all the static assets defined in the manifest, and split them into groups according
+   * to their file types and cache header settings.
+   *
+   * These groups are later used to create individual S3 deployments.
+   */
+  mapAssetGroups(routes: Route[]): AssetGroup[] {
+    const staticRoutes = routes.filter(
+      ({ type }) => "static" === type,
+    ) as StaticRoute[];
+
+    return Object.values(
+      staticRoutes.reduce(
+        (acc, route) => {
+          const contentType =
+            mime.getType(route.filePath) ?? "application/octet-stream";
+
+          const cacheControl = route.headers.find(
+            ({ key }) => "cache-control" === key,
+          )?.value;
+
+          const hash = createHash("md5")
+            .update(JSON.stringify({ contentType, cacheControl }))
+            .digest("hex");
+
+          const asset: Asset = {
+            filePath: route.filePath,
+            objectKey: objectKeyFromFilePath(route.filePath),
+          };
+
+          const existingAssetGroup = acc[hash];
+
+          const assetGroup: AssetGroup = existingAssetGroup
+            ? {
+                ...existingAssetGroup,
+                assets: [...existingAssetGroup.assets, asset],
+              }
+            : {
+                hash,
+                contentType,
+                cacheControl,
+                assets: [asset],
+              };
+
+          return {
+            ...acc,
+            [hash]: assetGroup,
+          };
+        },
+        {} as Record<string, AssetGroup>,
+      ),
+    );
   }
 }
 
@@ -122,3 +193,14 @@ const DEFAULT_CACHE_CONTROL_MAP: CacheControlMap = {
   "/page-data/app-data.json": "NO_CACHE",
   "/~partytown/**": "NO_CACHE",
 };
+
+/**
+ * Return an S3 object key from the given file path.
+ */
+function objectKeyFromFilePath(filePath: string): string {
+  let objectKey = filePath;
+  if (objectKey.startsWith("public/")) {
+    objectKey = objectKey.replace("public/", "");
+  }
+  return objectKey;
+}
