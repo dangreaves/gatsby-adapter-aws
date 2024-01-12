@@ -79,14 +79,6 @@ interface ExecutorBase {
 }
 type Executor = ExecutorLambda | ExecutorFargate;
 
-/** Function ID given by Gatsby for the SSR engine. */
-const SSR_ENGINE_FUNCTION_ID = "ssr-engine";
-
-/** Executors run in Lambda by default. */
-const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
-  target: "LAMBDA",
-};
-
 interface CacheBehaviorOptions {
   /**
    * Array of Lambda@Edge functions to attach to this behavior.
@@ -126,6 +118,14 @@ export interface GatsbySiteProps {
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
 }
+
+/** Function ID given by Gatsby for the SSR engine. */
+const SSR_ENGINE_FUNCTION_ID = "ssr-engine";
+
+/** Executors run in Lambda by default. */
+const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
+  target: "LAMBDA",
+};
 
 export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
