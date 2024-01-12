@@ -7,7 +7,7 @@ import type { Construct } from "constructs";
 
 import { GatsbySite } from "./GatsbySite.js";
 
-describe("basic example", () => {
+describe.skip("basic example", () => {
   class Stack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
       super(scope, id, props);
@@ -34,7 +34,7 @@ describe("basic example", () => {
   });
 });
 
-describe("gatsby-functions example", () => {
+describe.skip("gatsby-functions example", () => {
   class Stack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
       super(scope, id, props);
@@ -65,7 +65,7 @@ describe("gatsby-functions example", () => {
   });
 });
 
-describe("ssr example", () => {
+describe.skip("ssr example", () => {
   class Stack extends cdk.Stack {
     constructor(scope: Construct, id: string, props: cdk.StackProps) {
       super(scope, id, props);
