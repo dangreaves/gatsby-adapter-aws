@@ -137,7 +137,7 @@ export class Manifest {
           )?.value;
 
           // Short hash which can be used in CDK resource IDs.
-          const hash = createHash("shake256", { outputLength: 6 })
+          const hash = createHash("shake256", { outputLength: 3 })
             .update(JSON.stringify({ contentType, cacheControl }))
             .digest("hex");
 
