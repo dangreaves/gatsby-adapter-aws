@@ -8,6 +8,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
@@ -128,6 +129,8 @@ export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: cloudfront.Distribution;
 
+  protected adapterDir: string;
+
   protected manifest: IManifest;
 
   constructor(
@@ -147,11 +150,11 @@ export class GatsbySite extends Construct {
     super(scope, id);
 
     // Resolve path for adapter dir.
-    const adapterDir = path.resolve(gatsbyDir, ".aws");
+    this.adapterDir = path.resolve(gatsbyDir, ".aws");
 
     // Read manifest file.
     this.manifest = fs.readJSONSync(
-      path.join(adapterDir, "manifest.json"),
+      path.join(this.adapterDir, "manifest.json"),
     ) as IManifest;
 
     // Resolve executor options for each manifest function.
@@ -162,7 +165,11 @@ export class GatsbySite extends Construct {
         ? ssrExecutorOptions
         : resolveExecutorOptions?.(fn) ?? DEFAULT_EXECUTOR_OPTIONS;
 
-      const functionDir = path.join(adapterDir, "functions", fn.functionId);
+      const functionDir = path.join(
+        this.adapterDir,
+        "functions",
+        fn.functionId,
+      );
 
       return {
         ...fn,
@@ -431,5 +438,33 @@ export class GatsbySite extends Construct {
     // Exports.
     this.bucket = bucket;
     this.distribution = distribution;
+
+    // Create bucket deployments.
+    this.createBucketDeployments();
+  }
+
+  /**
+   * Create bucket deployment constructs for uploading static assets to S3.
+   *
+   * @todo Prune files after deployment. The built in prune is not suitable when using multiple bucket deployments.
+   *
+   * @see https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3_deployment-readme.html
+   */
+  protected createBucketDeployments() {
+    for (const assetGroup of this.manifest.assetGroups) {
+      new s3deploy.BucketDeployment(this, `Deployment-${assetGroup.hash}`, {
+        prune: false,
+        destinationBucket: this.bucket,
+        contentType: assetGroup.contentType,
+        cacheControl: assetGroup.cacheControl
+          ? [s3deploy.CacheControl.fromString(assetGroup.cacheControl)]
+          : [],
+        sources: [
+          s3deploy.Source.asset(
+            path.join(this.adapterDir, "assets", assetGroup.hash),
+          ),
+        ],
+      });
+    }
   }
 }
