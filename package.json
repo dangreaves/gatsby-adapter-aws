@@ -1,14 +1,22 @@
 {
   "name": "@dangreaves/gatsby-adapter-aws",
-  "version": "0.1.0",
-  "type": "module",
+  "version": "0.0.0",
+  "description": "Gatsby adapter for AWS",
+  "homepage": "https://github.com/dangreaves/gatsby-adapter-aws#readme",
+  "bugs": {
+    "url": "https://github.com/dangreaves/gatsby-adapter-aws/issues"
+  },
+  "repository": "dangreaves/gatsby-adapter-aws",
   "license": "MIT",
+  "type": "module",
   "exports": {
     "./cdk.js": "./dist/cdk/index.js",
     "./adapter.js": "./dist/adapter/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENCE",
+    "README.md"
   ],
   "scripts": {
     "test": "vitest",
@@ -20,7 +28,8 @@
     "build:examples": "for i in basic gatsby-functions ssr; do npm run build --workspace $i; done",
     "clean": "npm run clean:package && npm run clean:examples",
     "clean:package": "rm -rf dist",
-    "clean:examples": "for i in basic gatsby-functions ssr; do (cd examples/$i && rm -rf .aws public .cache); done"
+    "clean:examples": "for i in basic gatsby-functions ssr; do (cd examples/$i && rm -rf .aws public .cache); done",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
     "esbuild": "^0.19.11",
