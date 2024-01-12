@@ -14,9 +14,7 @@
     "./adapter.js": "./dist/adapter/index.js"
   },
   "files": [
-    "dist",
-    "LICENCE",
-    "README.md"
+    "dist"
   ],
   "scripts": {
     "test": "vitest",
