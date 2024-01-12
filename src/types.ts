@@ -1,34 +1,26 @@
-import type {
-  IStaticRoute,
-  IFunctionRoute,
-  IRedirectRoute,
-  RoutesManifest,
-  FunctionsManifest,
-} from "gatsby";
+import type { RoutesManifest, FunctionsManifest } from "gatsby";
 
-export interface Manifest {
+export interface IManifest {
   buildId: string;
   routes: RoutesManifest;
-  assetGroups: AssetGroup[];
+  assetGroups: IAssetGroup[];
   functions: FunctionsManifest;
 }
 
-export type Route = Manifest["routes"][0];
+export type IRoute = IManifest["routes"][0];
 
-export type StaticRoute = IStaticRoute;
-export type FunctionRoute = IFunctionRoute;
-export type RedirectRoute = IRedirectRoute;
+export type { IStaticRoute, IFunctionRoute, IRedirectRoute } from "gatsby";
 
-export type FunctionDefinition = Manifest["functions"][0];
+export type IFunctionDefinition = IManifest["functions"][0];
 
-export interface AssetGroup {
+export interface IAssetGroup {
   hash: string;
-  assets: Asset[];
+  assets: IAsset[];
   contentType: string;
   cacheControl?: string;
 }
 
-export interface Asset {
+export interface IAsset {
   filePath: string;
   objectKey: string;
 }

@@ -8,11 +8,11 @@ import type { RoutesManifest, FunctionsManifest } from "gatsby";
 import { REMOVE_GATSBY_HEADERS } from "../constants.js";
 
 import type {
-  Route,
-  Asset,
-  Manifest,
-  AssetGroup,
-  StaticRoute,
+  IRoute,
+  IAsset,
+  IManifest,
+  IAssetGroup,
+  IStaticRoute,
 } from "../types.js";
 
 type Header = { key: string; value: string };
@@ -20,14 +20,14 @@ type Header = { key: string; value: string };
 export type CacheControlMap = Record<string, CacheControl>;
 export type CacheControl = "NO_CACHE" | "IMMUTABLE" | { value: string };
 
-export class ManifestBuilder {
-  readonly buildId: Manifest["buildId"];
+export class Manifest {
+  readonly buildId: IManifest["buildId"];
 
-  readonly routes: Manifest["routes"];
+  readonly routes: IManifest["routes"];
 
-  readonly functions: Manifest["functions"];
+  readonly functions: IManifest["functions"];
 
-  readonly assetGroups: Manifest["assetGroups"];
+  readonly assetGroups: IManifest["assetGroups"];
 
   constructor({
     cacheControl,
@@ -56,7 +56,7 @@ export class ManifestBuilder {
   /**
    * Serialize manifest to an object.
    */
-  serialize(): Manifest {
+  serialize(): IManifest {
     return {
       routes: this.routes,
       buildId: this.buildId,
@@ -69,9 +69,9 @@ export class ManifestBuilder {
    * Map a single route.
    */
   mapRoute(
-    route: Route,
+    route: IRoute,
     { cacheControl }: { cacheControl?: CacheControlMap | undefined },
-  ): Route {
+  ): IRoute {
     if ("function" === route.type) return route;
 
     const headers: Header[] = [];
@@ -121,10 +121,10 @@ export class ManifestBuilder {
    *
    * These groups are later used to create individual S3 deployments.
    */
-  mapAssetGroups(routes: Route[]): AssetGroup[] {
+  mapAssetGroups(routes: IRoute[]): IAssetGroup[] {
     const staticRoutes = routes.filter(
       ({ type }) => "static" === type,
-    ) as StaticRoute[];
+    ) as IStaticRoute[];
 
     return Object.values(
       staticRoutes.reduce(
@@ -136,18 +136,19 @@ export class ManifestBuilder {
             ({ key }) => "cache-control" === key,
           )?.value;
 
-          const hash = createHash("md5")
+          // Short hash which can be used in CDK resource IDs.
+          const hash = createHash("shake256", { outputLength: 6 })
             .update(JSON.stringify({ contentType, cacheControl }))
             .digest("hex");
 
-          const asset: Asset = {
+          const asset: IAsset = {
             filePath: route.filePath,
             objectKey: objectKeyFromFilePath(route.filePath),
           };
 
           const existingAssetGroup = acc[hash];
 
-          const assetGroup: AssetGroup = existingAssetGroup
+          const assetGroup: IAssetGroup = existingAssetGroup
             ? {
                 ...existingAssetGroup,
                 assets: [...existingAssetGroup.assets, asset],
@@ -164,7 +165,7 @@ export class ManifestBuilder {
             [hash]: assetGroup,
           };
         },
-        {} as Record<string, AssetGroup>,
+        {} as Record<string, IAssetGroup>,
       ),
     );
   }

@@ -12,7 +12,7 @@ import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as elb from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
-import type { Manifest, FunctionDefinition } from "../types.js";
+import type { IManifest, IFunctionDefinition } from "../types.js";
 
 // Shim _dirname for ESM.
 import { fileURLToPath } from "url";
@@ -94,7 +94,7 @@ export interface GatsbySiteProps {
    */
   ssrExecutorOptions?: ExecutorOptions;
   /** Resolve executor options for the given function. */
-  resolveExecutorOptions?: (fn: FunctionDefinition) => ExecutorOptions;
+  resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
@@ -128,7 +128,7 @@ export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: cloudfront.Distribution;
 
-  protected manifest: Manifest;
+  protected manifest: IManifest;
 
   constructor(
     scope: Construct,
@@ -152,7 +152,7 @@ export class GatsbySite extends Construct {
     // Read manifest file.
     this.manifest = fs.readJSONSync(
       path.join(adapterDir, "manifest.json"),
-    ) as Manifest;
+    ) as IManifest;
 
     // Resolve executor options for each manifest function.
     const fnsWithExecutorOptions = this.manifest.functions.map((fn) => {

@@ -3,7 +3,7 @@ import path from "node:path";
 import type { AdapterInit } from "gatsby";
 
 import { prepareFunction } from "./functions.js";
-import { ManifestBuilder, type CacheControlMap } from "./manifest.js";
+import { Manifest, type CacheControlMap } from "./manifest.js";
 
 export interface AdapterOptions {
   cacheControl?: CacheControlMap;
@@ -26,14 +26,17 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
       // Output log message.
       reporter.log("@dangreaves/gatsby-adapter-aws: Starting compilation.");
 
+      // Prepare a manifest.
+      const manifest = new Manifest({
+        routesManifest,
+        functionsManifest,
+        cacheControl: options?.cacheControl,
+      });
+
       // Write manifest file.
       await fs.writeJSON(
         path.join(adapterDir, "manifest.json"),
-        new ManifestBuilder({
-          routesManifest,
-          functionsManifest,
-          cacheControl: options?.cacheControl,
-        }).serialize(),
+        manifest.serialize(),
       );
 
       // Functions manifest often contains functions with no routes, let's filter those out.
