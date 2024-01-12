@@ -16,7 +16,7 @@ export async function prepareFunction(
   fn: IFunctionDefinition,
   { gatsbyDir, adapterDir }: { gatsbyDir: string; adapterDir: string },
 ) {
-  // Resolve and ensur function dir exists.
+  // Resolve and ensure function dir exists.
   const functionDir = path.join(adapterDir, "functions", fn.functionId);
   await fs.ensureDir(functionDir);
 
