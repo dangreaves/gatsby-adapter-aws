@@ -2,6 +2,7 @@ import fs from "fs-extra";
 import path from "node:path";
 import type { AdapterInit } from "gatsby";
 
+import { AssetBundler } from "./assets.js";
 import { prepareFunction } from "./functions.js";
 import { Manifest, type CacheControlMap } from "./manifest.js";
 
@@ -51,6 +52,12 @@ export const createAdapter: AdapterInit<AdapterOptions> = (options) => {
       // Prepare lambda functions.
       for (const fn of functionsWithRoutes) {
         await prepareFunction(fn, { gatsbyDir, adapterDir });
+      }
+
+      // Bundle assets groups.
+      const assetBundler = new AssetBundler({ gatsbyDir, adapterDir });
+      for (const assetGroup of manifest.assetGroups) {
+        await assetBundler.bundleAssetGroup(assetGroup);
       }
 
       // Calculate elapsed time.
