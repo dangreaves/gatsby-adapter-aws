@@ -4,7 +4,6 @@ import { Construct } from "constructs";
 
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
@@ -113,8 +112,6 @@ export interface GatsbySiteProps {
   domainNames?: cloudfront.DistributionProps["domainNames"];
   /** SSL certificate */
   certificate?: cloudfront.DistributionProps["certificate"];
-  /* Create a deployment role for the given principal. */
-  deploymentRolePrinciple?: iam.IPrincipal;
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
 }
@@ -144,7 +141,6 @@ export class GatsbySite extends Construct {
       distributionOptions,
       cacheBehaviorOptions,
       resolveExecutorOptions,
-      deploymentRolePrinciple,
       ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
@@ -431,22 +427,6 @@ export class GatsbySite extends Construct {
     new cdk.CfnOutput(this, "DomainNameOutput", {
       value: distribution.domainName,
     });
-
-    // Create deployment role if principle provided.
-    if (deploymentRolePrinciple) {
-      // Create a deployment role for writing to the bucket.
-      const deploymentRole = new iam.Role(this, "DeploymentRole", {
-        assumedBy: deploymentRolePrinciple,
-      });
-
-      // Allow deployment role to write to bucket.
-      bucket.grantReadWrite(deploymentRole);
-
-      // Output the deployment role.
-      new cdk.CfnOutput(this, "DeploymentRoleOutput", {
-        value: deploymentRole.roleArn,
-      });
-    }
 
     // Exports.
     this.bucket = bucket;
