@@ -11,83 +11,92 @@ type Header = { key: string; value: string };
 export type CacheControlMap = Record<string, CacheControl>;
 export type CacheControl = "NO_CACHE" | "IMMUTABLE" | { value: string };
 
-/**
- * Build a manifest blob using the Gatsby manifests.
- */
-export function buildManifest({
-  cacheControl,
-  routesManifest,
-  functionsManifest,
-}: {
-  routesManifest: RoutesManifest;
-  cacheControl?: CacheControlMap;
-  functionsManifest: FunctionsManifest;
-}): Manifest {
-  // Generate a build ID.
-  const buildId = ulid();
+export class ManifestBuilder {
+  readonly buildId: Manifest["buildId"];
 
-  // Map routes.
-  const routes = routesManifest.map((route) =>
-    mapRoute(route, { cacheControl }),
-  );
+  readonly routes: Manifest["routes"];
 
-  // Map functions.
-  const functions = functionsManifest;
+  readonly functions: Manifest["functions"];
 
-  // Return manifest shape.
-  return {
-    routes,
-    buildId,
-    functions,
-  };
-}
+  constructor({
+    cacheControl,
+    routesManifest,
+    functionsManifest,
+  }: {
+    routesManifest: RoutesManifest;
+    cacheControl?: CacheControlMap;
+    functionsManifest: FunctionsManifest;
+  }) {
+    // Generate a build ID.
+    this.buildId = ulid();
 
-/**
- * Map the given route using the given options.
- */
-function mapRoute(
-  route: Route,
-  { cacheControl }: { cacheControl?: CacheControlMap | undefined },
-): Route {
-  if ("function" === route.type) return route;
+    // Map routes.
+    this.routes = routesManifest.map((route) =>
+      this.mapRoute(route, { cacheControl }),
+    );
 
-  const headers: Header[] = [];
-
-  // Add Gatsby generated headers.
-  if (route.headers) {
-    for (const header of route.headers) {
-      if (REMOVE_GATSBY_HEADERS.includes(header.key)) continue;
-      headers.push(header);
-    }
+    // Map functions.
+    this.functions = functionsManifest;
   }
 
-  // Combine cache control map with defaults.
-  const cacheControlMap: CacheControlMap = {
-    ...cacheControl,
-    ...DEFAULT_CACHE_CONTROL_MAP,
-  };
+  /**
+   * Serialize manifest to an object.
+   */
+  serialize(): Manifest {
+    return {
+      routes: this.routes,
+      buildId: this.buildId,
+      functions: this.functions,
+    };
+  }
 
-  // Add cache control headers.
-  Object.entries(cacheControlMap).forEach(([pattern, cacheControlValue]) => {
-    if (!minimatch(route.path, pattern)) return;
+  /**
+   * Map a single route.
+   */
+  mapRoute(
+    route: Route,
+    { cacheControl }: { cacheControl?: CacheControlMap | undefined },
+  ): Route {
+    if ("function" === route.type) return route;
 
-    headers.push({
-      key: "cache-control",
-      value:
-        "IMMUTABLE" === cacheControlValue
-          ? "public, max-age=31536000, immutable"
-          : "NO_CACHE" === cacheControlValue
-            ? "public, max-age=0, must-revalidate"
-            : cacheControlValue.value,
+    const headers: Header[] = [];
+
+    // Add Gatsby generated headers.
+    if (route.headers) {
+      for (const header of route.headers) {
+        if (REMOVE_GATSBY_HEADERS.includes(header.key)) continue;
+        headers.push(header);
+      }
+    }
+
+    // Combine cache control map with defaults.
+    const cacheControlMap: CacheControlMap = {
+      ...cacheControl,
+      ...DEFAULT_CACHE_CONTROL_MAP,
+    };
+
+    // Add cache control headers.
+    Object.entries(cacheControlMap).forEach(([pattern, cacheControlValue]) => {
+      if (!minimatch(route.path, pattern)) return;
+
+      headers.push({
+        key: "cache-control",
+        value:
+          "IMMUTABLE" === cacheControlValue
+            ? "public, max-age=31536000, immutable"
+            : "NO_CACHE" === cacheControlValue
+              ? "public, max-age=0, must-revalidate"
+              : cacheControlValue.value,
+      });
     });
-  });
 
-  // @todo Allow custom headers.
+    // @todo Allow custom headers.
 
-  return {
-    ...route,
-    headers: dedupeHeaders(headers),
-  };
+    return {
+      ...route,
+      headers: dedupeHeaders(headers),
+    };
+  }
 }
 
 /**
