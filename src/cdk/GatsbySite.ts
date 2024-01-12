@@ -131,6 +131,8 @@ export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: cloudfront.Distribution;
 
+  protected manifest: Manifest;
+
   constructor(
     scope: Construct,
     id: string,
@@ -152,12 +154,12 @@ export class GatsbySite extends Construct {
     const adapterDir = path.resolve(gatsbyDir, ".aws");
 
     // Read manifest file.
-    const manifest = fs.readJSONSync(
+    this.manifest = fs.readJSONSync(
       path.join(adapterDir, "manifest.json"),
     ) as Manifest;
 
     // Resolve executor options for each manifest function.
-    const fnsWithExecutorOptions = manifest.functions.map((fn) => {
+    const fnsWithExecutorOptions = this.manifest.functions.map((fn) => {
       const isSsrEngine = SSR_ENGINE_FUNCTION_ID === fn.functionId;
 
       const executorOptions = isSsrEngine
