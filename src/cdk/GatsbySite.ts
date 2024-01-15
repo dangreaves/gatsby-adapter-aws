@@ -464,6 +464,8 @@ export class GatsbySite extends Construct {
             path.join(this.adapterDir, "assets", assetGroup.hash),
           ),
         ],
+        memoryLimit: 1024,
+        ephemeralStorageSize: cdk.Size.gibibytes(1),
       });
     }
   }
