@@ -115,6 +115,18 @@ export interface GatsbySiteProps {
   certificate?: cloudfront.DistributionProps["certificate"];
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
+  /**
+   * Options for the S3 bucket deployment construct.
+   *
+   * - These options affect the CDK-managed Lambda function which unzips and copies assets into S3.
+   * - You may need to increase memoryLimit and/or ephemeralStorageSize for projects with large or numerous assets.
+   * - Default memoryLimit is 1gb. Increase this if you get SIGKILL or function timeout errors.
+   * - Default ephemeralStorageSize is 1gb. Increase this if you get "No space left on device" errors.
+   */
+  bucketDeploymentOptions?: Pick<
+    s3deploy.BucketDeploymentProps,
+    "ephemeralStorageSize" | "memoryLimit"
+  >;
 }
 
 /** Function ID given by Gatsby for the SSR engine. */
@@ -144,6 +156,7 @@ export class GatsbySite extends Construct {
       distributionOptions,
       cacheBehaviorOptions,
       resolveExecutorOptions,
+      bucketDeploymentOptions,
       ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
@@ -440,7 +453,7 @@ export class GatsbySite extends Construct {
     this.distribution = distribution;
 
     // Create bucket deployments.
-    this.createBucketDeployments();
+    this.createBucketDeployments(bucketDeploymentOptions);
   }
 
   /**
@@ -450,7 +463,10 @@ export class GatsbySite extends Construct {
    *
    * @see https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3_deployment-readme.html
    */
-  protected createBucketDeployments() {
+  protected createBucketDeployments({
+    memoryLimit,
+    ephemeralStorageSize,
+  }: GatsbySiteProps["bucketDeploymentOptions"] = {}) {
     for (const assetGroup of this.manifest.assetGroups) {
       new s3deploy.BucketDeployment(this, `Deployment-${assetGroup.hash}`, {
         prune: false,
@@ -464,8 +480,8 @@ export class GatsbySite extends Construct {
             path.join(this.adapterDir, "assets", assetGroup.hash),
           ),
         ],
-        memoryLimit: 1024,
-        ephemeralStorageSize: cdk.Size.gibibytes(1),
+        memoryLimit: memoryLimit ?? 1024,
+        ephemeralStorageSize: ephemeralStorageSize ?? cdk.Size.gibibytes(1),
       });
     }
   }
