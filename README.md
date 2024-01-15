@@ -52,3 +52,32 @@ export class GatsbyStack extends cdk.Stack {
   }
 }
 ```
+
+## Static assets
+
+Static assets are deployed to an S3 bucket.
+
+During the Gatsby build, the adapter groups static assets from the `public` directory into groups according to their mime type and cache control header. After you run a build, you can see these asset groups in `.aws/assets`.
+
+During the CDK deploy, the construct creates a [BucketDeployment](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3_deployment-readme.html) for each of these groups, which is responsible for zipping the local assets, uploading it to an asset bucket managed by CDK, and executing a Lambda function which unzips the assets and uploads them to the S3 bucket.
+
+### Size limits
+
+If your Gatsby site generates a large number of files, the Lambda function which copies them to S3 may run out of resources (see [Size limits](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_s3_deployment-readme.html#size-limits) for the BucketDeployment construct).
+
+- If the Lambda function runs out of memory, you may see a SIGKILL or function timeout error.
+- If the Lambda function runs out of ephemeral storage, you may see a "No space left on device" error.
+
+If you see these errors, use the `bucketDeploymentOptions` option to increase the resources.
+
+```ts
+import * as cdk from "aws-cdk-lib";
+
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  bucketDeploymentOptions: {
+    memoryLimit: 2048,
+    ephemeralStorageSize: cdk.Size.gibibytes(5),
+  },
+});
+```
