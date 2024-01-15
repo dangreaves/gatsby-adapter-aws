@@ -8,6 +8,15 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
 - Supports [Gatsby Functions](https://www.gatsbyjs.com/docs/reference/functions/) using Lambda functions
 - Supports [Server-sider Rendering (SSR)](https://www.gatsbyjs.com/docs/how-to/rendering-options/using-server-side-rendering/) by packaging the SSR engine into either a Lambda function (for small projects) or ECS Fargate (for larger projects)
 
+## Contents
+
+1. [Prerequisites](#prerequisites)
+2. [Installation](#installation)
+3. [Adapter](#adapter)
+4. [Construct](#construct)
+5. [Static assets](#static-assets)
+   1. [Size limits](#size-limits)
+
 ## Prerequisites
 
 Your Gatsby version must be newer than 5.12.0, which is where [adapters](https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/adapters/) were introduced.
