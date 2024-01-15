@@ -1,7 +1,6 @@
 import type { RoutesManifest, FunctionsManifest } from "gatsby";
 
 export interface IManifest {
-  buildId: string;
   routes: RoutesManifest;
   assetGroups: IAssetGroup[];
   functions: FunctionsManifest;

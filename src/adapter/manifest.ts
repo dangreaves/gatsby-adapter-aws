@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 
 import mime from "mime";
-import { ulid } from "ulid";
 import { minimatch } from "minimatch";
 import type { RoutesManifest, FunctionsManifest } from "gatsby";
 
@@ -21,8 +20,6 @@ export type CacheControlMap = Record<string, CacheControl>;
 export type CacheControl = "NO_CACHE" | "IMMUTABLE" | { value: string };
 
 export class Manifest {
-  readonly buildId: IManifest["buildId"];
-
   readonly routes: IManifest["routes"];
 
   readonly functions: IManifest["functions"];
@@ -38,9 +35,6 @@ export class Manifest {
     cacheControl?: CacheControlMap;
     functionsManifest: FunctionsManifest;
   }) {
-    // Generate a build ID.
-    this.buildId = ulid();
-
     // Map routes.
     this.routes = routesManifest.map((route) =>
       this.mapRoute(route, { cacheControl }),
@@ -59,7 +53,6 @@ export class Manifest {
   serialize(): IManifest {
     return {
       routes: this.routes,
-      buildId: this.buildId,
       functions: this.functions,
       assetGroups: this.assetGroups,
     };
