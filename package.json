@@ -34,7 +34,6 @@
     "fs-extra": "^11.2.0",
     "mime": "^4.0.1",
     "minimatch": "^9.0.3",
-    "replace-in-file": "^7.1.0",
     "ulid": "^2.3.0"
   },
   "devDependencies": {

@@ -2,7 +2,6 @@ import fs from "fs-extra";
 import path from "node:path";
 import esbuild from "esbuild";
 import { minimatch } from "minimatch";
-import * as replaceInFile from "replace-in-file";
 
 import type { IFunctionDefinition } from "../types.js";
 
@@ -39,9 +38,8 @@ export async function prepareFunction(
      * to configure.
      */
     if (/\.cache\/[\w-]+\/index\.js/.test(requiredFile)) {
-      await replaceInFile.default.replaceInFile({
-        files: targetPath,
-        from: /const BASE_HEADERS = \[[^\]]+\];/,
+      await replaceInFile(targetPath, {
+        from: /const BASE_HEADERS = \[[^\]]+\];/g,
         to: `const BASE_HEADERS = [];`,
       });
     }
@@ -63,8 +61,7 @@ export async function prepareFunction(
   );
 
   // Replace gatsby import with actual import in lambda handler.
-  await replaceInFile.default.replaceInFile({
-    files: path.join(functionDir, entryPointDir, "handler.js"),
+  await replaceInFile(path.join(functionDir, entryPointDir, "handler.js"), {
     from: "var __GATSBY_HANDLER__ = void 0;",
     to: `import __GATSBY_HANDLER__ from "./${entryPointName}";`,
   });
@@ -76,8 +73,7 @@ export async function prepareFunction(
   );
 
   // Replace entrypoint in Dockerfile.
-  await replaceInFile.default.replaceInFile({
-    files: path.join(functionDir, "Dockerfile"),
+  await replaceInFile(path.join(functionDir, "Dockerfile"), {
     from: "__HANDLER_PATH__",
     to: path.join(entryPointDir, "handler.js"),
   });
@@ -173,4 +169,22 @@ function getAllFiles(options: {
   }
 
   return filenames;
+}
+
+/**
+ * Replace string or regex `from` with string `to` in the given file.
+ */
+async function replaceInFile(
+  filePath: string,
+  {
+    from,
+    to,
+  }: {
+    from: string | RegExp;
+    to: string;
+  },
+) {
+  const contents = (await fs.readFile(filePath)).toString();
+  const newContents = contents.replaceAll(from, to);
+  await fs.writeFile(filePath, newContents);
 }
