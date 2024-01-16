@@ -20,7 +20,7 @@ const __dirname = getDirname();
 
 export type GatsbyDistributionProps = Pick<
   GatsbySiteProps,
-  "domainNames" | "certificate" | "distributionOptions" | "cacheBehaviorOptions"
+  "distributionOptions" | "cacheBehaviorOptions"
 > & {
   bucket: s3.IBucket;
   executors: Executor[];
@@ -35,8 +35,6 @@ export class GatsbyDistribution extends Construct {
     {
       bucket,
       executors,
-      domainNames,
-      certificate,
       distributionOptions,
       cacheBehaviorOptions,
     }: GatsbyDistributionProps,
@@ -92,8 +90,11 @@ export class GatsbyDistribution extends Construct {
     // Construct default cache behavior.
     const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineExecutor
       ? {
-          cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
+          // Default attributes.
+          cachePolicy,
+          // User attributes.
           ...cacheBehaviorOptions?.default,
+          // Protected attributes.
           origin:
             "LAMBDA" === ssrEngineExecutor.target
               ? new origins.HttpOrigin(
@@ -107,8 +108,11 @@ export class GatsbyDistribution extends Construct {
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         }
       : {
-          cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
+          // Default attributes.
+          cachePolicy,
+          // User attributes.
           ...cacheBehaviorOptions?.default,
+          // Protected attributes.
           origin: new origins.S3Origin(bucket),
           viewerProtocolPolicy:
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -122,9 +126,9 @@ export class GatsbyDistribution extends Construct {
 
     // Construct distribution props.
     const distributionProps: cloudfront.DistributionProps = {
+      // Default attributes.
       ...distributionOptions,
-      ...(domainNames ? { domainNames } : {}),
-      ...(certificate ? { certificate } : {}),
+      // Protected attributes.
       ...(ssrEngineExecutor ? {} : { defaultRootObject: "index.html" }),
       errorResponses: [
         {
@@ -182,6 +186,8 @@ export class GatsbyDistribution extends Construct {
           }),
           {} as Record<string, cloudfront.BehaviorOptions>,
         ),
+        // User attributes.
+        ...distributionOptions?.additionalBehaviors,
       },
     };
 

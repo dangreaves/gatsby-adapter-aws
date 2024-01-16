@@ -24,12 +24,17 @@ import type {
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
-interface CacheBehaviorOptions {
-  /**
-   * Array of Lambda@Edge functions to attach to this behavior.
-   */
-  edgeLambdas?: NonNullable<cloudfront.BehaviorOptions["edgeLambdas"]>;
-}
+type EditableBehaviorOptions = Omit<
+  cloudfront.DistributionProps["defaultBehavior"],
+  "origin" | "viewerProtocolPolicy"
+>;
+
+type EditableDistributionOptions = Omit<
+  cloudfront.DistributionProps,
+  "defaultRootObject" | "errorResponses" | "defaultBehavior"
+> & {
+  additionalBehaviors?: Record<string, EditableBehaviorOptions>;
+};
 
 export interface GatsbySiteProps {
   /** Path to Gatsby directory. */
@@ -44,20 +49,14 @@ export interface GatsbySiteProps {
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
-    default?: CacheBehaviorOptions;
+    default?: EditableBehaviorOptions;
     /** Cache behavior options for static assets (prefixed by /assets) */
-    assets?: CacheBehaviorOptions;
+    assets?: EditableBehaviorOptions;
     /** Cache behavior options for functions (not including SSR engine) */
-    functions?: CacheBehaviorOptions;
+    functions?: EditableBehaviorOptions;
   };
   /** Custom CloudFront distribution options */
-  distributionOptions?: Partial<
-    Omit<cloudfront.DistributionProps, "domainNames" | "certificate">
-  >;
-  /** Custom domain names */
-  domainNames?: cloudfront.DistributionProps["domainNames"];
-  /** SSL certificate */
-  certificate?: cloudfront.DistributionProps["certificate"];
+  distributionOptions?: EditableDistributionOptions;
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
   /**
@@ -93,8 +92,6 @@ export class GatsbySite extends Construct {
     {
       vpc,
       gatsbyDir,
-      domainNames,
-      certificate,
       distributionOptions,
       cacheBehaviorOptions,
       resolveExecutorOptions,
@@ -258,8 +255,6 @@ export class GatsbySite extends Construct {
     const distribution = new GatsbyDistribution(this, "Distribution", {
       bucket,
       executors,
-      domainNames,
-      certificate,
       distributionOptions,
       cacheBehaviorOptions,
     });
