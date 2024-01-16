@@ -345,9 +345,18 @@ export class GatsbySite extends Construct {
       },
     );
 
+    /**
+     * Create a cache policy which includes query strings.
+     * This can be overridden using the cacheBehaviorOptions prop.
+     */
+    const cachePolicy = new cloudfront.CachePolicy(this, "CachePolicy", {
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+    });
+
     // Construct default cache behavior.
     const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineExecutor
       ? {
+          cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
           ...cacheBehaviorOptions?.default,
           origin:
             "LAMBDA" === ssrEngineExecutor.target
@@ -362,6 +371,7 @@ export class GatsbySite extends Construct {
             cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         }
       : {
+          cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
           ...cacheBehaviorOptions?.default,
           origin: new origins.S3Origin(bucket),
           viewerProtocolPolicy:
@@ -424,6 +434,7 @@ export class GatsbySite extends Construct {
           (acc, executor) => ({
             ...acc,
             [executor.executorId]: {
+              cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
               ...cacheBehaviorOptions?.functions,
               origin:
                 "LAMBDA" === executor.target
