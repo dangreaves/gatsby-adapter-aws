@@ -24,6 +24,7 @@ export type GatsbyDistributionProps = Pick<
 > & {
   bucket: s3.IBucket;
   executors: Executor[];
+  disableCache?: boolean;
 };
 
 export class GatsbyDistribution extends Construct {
@@ -35,6 +36,7 @@ export class GatsbyDistribution extends Construct {
     {
       bucket,
       executors,
+      disableCache,
       distributionOptions,
       cacheBehaviorOptions,
     }: GatsbyDistributionProps,
@@ -87,6 +89,42 @@ export class GatsbyDistribution extends Construct {
       queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
     });
 
+    /**
+     * Create a default response headers policy.
+     * This can be overridden using the cacheBehaviorOptions prop.
+     */
+    const defaultResponseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
+      this,
+      "DefaultResponseHeadersPolicy",
+      {
+        ...cacheBehaviorOptions?.default?.responseHeadersPolicyProps,
+        customHeadersBehavior: {
+          ...cacheBehaviorOptions?.default?.responseHeadersPolicyProps
+            ?.customHeadersBehavior,
+          customHeaders: [
+            ...(cacheBehaviorOptions?.default?.responseHeadersPolicyProps
+              ?.customHeadersBehavior?.customHeaders ?? []),
+            // Override the Cache-Control header to no-store when disable cache is enabled for this distribution.
+            ...(disableCache
+              ? [{ header: "Cache-Control", value: "no-store", override: true }]
+              : []),
+          ],
+        },
+      },
+    );
+
+    // Create base default behavior options (used by all default behaviors).
+    const baseDefaultBehaviorOptions: Pick<
+      cloudfront.BehaviorOptions,
+      "viewerProtocolPolicy" | "responseHeadersPolicy" | "cachePolicy"
+    > = {
+      responseHeadersPolicy: defaultResponseHeadersPolicy,
+      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      ...(disableCache
+        ? { cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED }
+        : {}),
+    };
+
     // Construct default cache behavior.
     const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineExecutor
       ? {
@@ -104,8 +142,7 @@ export class GatsbyDistribution extends Construct {
                   ssrEngineExecutor.loadBalancer,
                   { protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY },
                 ),
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          ...baseDefaultBehaviorOptions,
         }
       : {
           // Default attributes.
@@ -114,14 +151,13 @@ export class GatsbyDistribution extends Construct {
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
           origin: new origins.S3Origin(bucket),
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           functionAssociations: [
             {
               function: staticViewerRequestFn,
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
             },
           ],
+          ...baseDefaultBehaviorOptions,
         };
 
     // Construct distribution props.
@@ -174,8 +210,11 @@ export class GatsbyDistribution extends Construct {
           (acc, executor) => ({
             ...acc,
             [executor.executorId]: {
-              cachePolicy, // Important that this stays above cacheBehaviorOptions to make it overridable.
+              // Default attributes.
+              cachePolicy,
+              // User attributes.
               ...cacheBehaviorOptions?.functions,
+              // Protected attributes.
               origin:
                 "LAMBDA" === executor.target
                   ? new origins.HttpOrigin(executor.lambdaFunctionUrlDomain)

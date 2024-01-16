@@ -25,9 +25,9 @@ import type {
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
 type EditableBehaviorOptions = Omit<
-  cloudfront.DistributionProps["defaultBehavior"],
-  "origin" | "viewerProtocolPolicy"
->;
+  cloudfront.BehaviorOptions,
+  "origin" | "viewerProtocolPolicy" | "responseHeadersPolicy"
+> & { responseHeadersPolicyProps?: cloudfront.ResponseHeadersPolicyProps };
 
 type EditableDistributionOptions = Omit<
   cloudfront.DistributionProps,
@@ -57,6 +57,16 @@ export interface GatsbySiteProps {
   };
   /** Custom CloudFront distribution options */
   distributionOptions?: EditableDistributionOptions;
+  /**
+   * Custom CloudFront distribution options for preview distribution.
+   *
+   * This additional distribution has all caching disabled, allowing you to "preview" your changes
+   * without clearing the CloudFront cache.
+   *
+   * @todo All requests to Gatsby from this distribution include an `X-Preview-Enabled = true` header
+   * which you can use in your application code to load drafts from your CMS.
+   */
+  previewDistributionOptions?: EditableDistributionOptions & { enabled: true };
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
   /**
@@ -81,6 +91,7 @@ const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
 export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: GatsbyDistribution;
+  readonly previewDistribution?: GatsbyDistribution;
 
   protected adapterDir: string;
 
@@ -96,6 +107,7 @@ export class GatsbySite extends Construct {
       cacheBehaviorOptions,
       resolveExecutorOptions,
       bucketDeploymentOptions,
+      previewDistributionOptions,
       ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
@@ -241,10 +253,10 @@ export class GatsbySite extends Construct {
     }, [] as Executor[]);
 
     // Create bucket to store static assets.
-    const bucket = new s3.Bucket(this, "Bucket", {
+    const bucket = (this.bucket = new s3.Bucket(this, "Bucket", {
       autoDeleteObjects: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    }));
 
     // Output the bucket name.
     new cdk.CfnOutput(this, "BucketOutput", {
@@ -252,16 +264,27 @@ export class GatsbySite extends Construct {
     });
 
     // Create distribution.
-    const distribution = new GatsbyDistribution(this, "Distribution", {
+    this.distribution = new GatsbyDistribution(this, "Distribution", {
       bucket,
       executors,
       distributionOptions,
       cacheBehaviorOptions,
     });
 
-    // Exports.
-    this.bucket = bucket;
-    this.distribution = distribution;
+    // Create preview distribution.
+    if (previewDistributionOptions?.enabled) {
+      this.previewDistribution = new GatsbyDistribution(
+        this,
+        "PreviewDistribution",
+        {
+          bucket,
+          executors,
+          disableCache: true,
+          cacheBehaviorOptions,
+          distributionOptions: previewDistributionOptions,
+        },
+      );
+    }
 
     // Create bucket deployments.
     this.createBucketDeployments(bucketDeploymentOptions);
