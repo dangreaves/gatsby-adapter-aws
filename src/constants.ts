@@ -10,3 +10,6 @@ export const REMOVE_GATSBY_HEADERS = [
   "referrer-policy",
   "x-frame-options",
 ];
+
+/** Function ID given by Gatsby for the SSR engine. */
+export const SSR_ENGINE_FUNCTION_ID = "ssr-engine";
