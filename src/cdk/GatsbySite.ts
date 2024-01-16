@@ -7,11 +7,13 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 
-import { GatsbyDistribution } from "./GatsbyDistribution.js";
+import {
+  GatsbyDistribution,
+  GatsbyDistributionProps,
+} from "./GatsbyDistribution.js";
 
 import type {
   Executor,
@@ -24,18 +26,6 @@ import type {
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
-type EditableBehaviorOptions = Omit<
-  cloudfront.BehaviorOptions,
-  "origin" | "viewerProtocolPolicy" | "responseHeadersPolicy"
-> & { responseHeadersPolicyProps?: cloudfront.ResponseHeadersPolicyProps };
-
-type EditableDistributionOptions = Omit<
-  cloudfront.DistributionProps,
-  "defaultRootObject" | "errorResponses" | "defaultBehavior"
-> & {
-  additionalBehaviors?: Record<string, EditableBehaviorOptions>;
-};
-
 export interface GatsbySiteProps {
   /** Path to Gatsby directory. */
   gatsbyDir: string;
@@ -47,26 +37,14 @@ export interface GatsbySiteProps {
   /** Resolve executor options for the given function. */
   resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
   /** Custom cache behavior options */
-  cacheBehaviorOptions?: {
-    /** Cache behavior options for default route (including SSR engine) */
-    default?: EditableBehaviorOptions;
-    /** Cache behavior options for static assets (prefixed by /assets) */
-    assets?: EditableBehaviorOptions;
-    /** Cache behavior options for functions (not including SSR engine) */
-    functions?: EditableBehaviorOptions;
-  };
+  cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
   /** Custom CloudFront distribution options */
-  distributionOptions?: EditableDistributionOptions;
-  /**
-   * Custom CloudFront distribution options for preview distribution.
-   *
-   * This additional distribution has all caching disabled, allowing you to "preview" your changes
-   * without clearing the CloudFront cache.
-   *
-   * @todo All requests to Gatsby from this distribution include an `X-Preview-Enabled = true` header
-   * which you can use in your application code to load drafts from your CMS.
-   */
-  previewDistributionOptions?: EditableDistributionOptions & { enabled: true };
+  distributionOptions?: GatsbyDistributionProps["distributionOptions"];
+  /** Options for additional CloudFront distributions */
+  additionalDistributionOptions?: Record<
+    string,
+    GatsbyDistributionProps["distributionOptions"]
+  >;
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
   /**
@@ -91,7 +69,7 @@ const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
 export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: GatsbyDistribution;
-  readonly previewDistribution?: GatsbyDistribution;
+  readonly additionalDistributions: GatsbyDistribution[] = [];
 
   protected adapterDir: string;
 
@@ -107,7 +85,7 @@ export class GatsbySite extends Construct {
       cacheBehaviorOptions,
       resolveExecutorOptions,
       bucketDeploymentOptions,
-      previewDistributionOptions,
+      additionalDistributionOptions,
       ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
@@ -271,20 +249,19 @@ export class GatsbySite extends Construct {
       cacheBehaviorOptions,
     });
 
-    // Create preview distribution.
-    if (previewDistributionOptions?.enabled) {
-      this.previewDistribution = new GatsbyDistribution(
-        this,
-        "PreviewDistribution",
-        {
-          bucket,
-          executors,
-          disableCache: true,
-          cacheBehaviorOptions,
-          distributionOptions: previewDistributionOptions,
-        },
-      );
-    }
+    // Create additional distributions.
+    Object.entries(additionalDistributionOptions ?? {}).forEach(
+      ([key, distributionOptions]) => {
+        this.additionalDistributions.push(
+          new GatsbyDistribution(this, `Distribution-${key}`, {
+            bucket,
+            executors,
+            distributionOptions,
+            cacheBehaviorOptions,
+          }),
+        );
+      },
+    );
 
     // Create bucket deployments.
     this.createBucketDeployments(bucketDeploymentOptions);

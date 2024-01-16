@@ -10,22 +10,46 @@ import type { Executor } from "../types.js";
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
-import type { GatsbySiteProps } from "./GatsbySite.js";
-
 // Shim _dirname for ESM.
 import { fileURLToPath } from "url";
 const getFilename = () => fileURLToPath(import.meta.url);
 const getDirname = () => path.dirname(getFilename());
 const __dirname = getDirname();
 
-export type GatsbyDistributionProps = Pick<
-  GatsbySiteProps,
-  "distributionOptions" | "cacheBehaviorOptions"
+type EditableBehaviorOptions = Omit<
+  cloudfront.BehaviorOptions,
+  "origin" | "viewerProtocolPolicy" | "responseHeadersPolicy"
+> & { responseHeadersPolicyProps?: cloudfront.ResponseHeadersPolicyProps };
+
+type EditableDistributionOptions = Omit<
+  cloudfront.DistributionProps,
+  "defaultRootObject" | "errorResponses" | "defaultBehavior"
 > & {
-  bucket: s3.IBucket;
-  executors: Executor[];
+  additionalBehaviors?: Record<string, EditableBehaviorOptions>;
+  /**
+   * Disable the cache for this distribution.
+   * Cache-Control headers will be overridden in responses.
+   */
   disableCache?: boolean;
 };
+
+export interface GatsbyDistributionProps {
+  /** Bucket for static assets */
+  bucket: s3.IBucket;
+  /** Array of function executors */
+  executors: Executor[];
+  /** Custom cache behavior options */
+  cacheBehaviorOptions?: {
+    /** Cache behavior options for default route (including SSR engine) */
+    default?: EditableBehaviorOptions;
+    /** Cache behavior options for static assets (prefixed by /assets) */
+    assets?: EditableBehaviorOptions;
+    /** Cache behavior options for functions (not including SSR engine) */
+    functions?: EditableBehaviorOptions;
+  };
+  /** Custom CloudFront distribution options */
+  distributionOptions?: EditableDistributionOptions;
+}
 
 export class GatsbyDistribution extends Construct {
   readonly distribution: cloudfront.Distribution;
@@ -36,9 +60,8 @@ export class GatsbyDistribution extends Construct {
     {
       bucket,
       executors,
-      disableCache,
-      distributionOptions,
       cacheBehaviorOptions,
+      distributionOptions: { disableCache, ...distributionOptions } = {},
     }: GatsbyDistributionProps,
   ) {
     super(scope, id);
