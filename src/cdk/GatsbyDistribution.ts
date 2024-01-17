@@ -57,6 +57,10 @@ export interface GatsbyDistributionProps {
    * Custom CloudFront distribution options.
    */
   distributionOptions?: EditableDistributionOptions;
+  /**
+   * Optional custom headers to send to origin.
+   */
+  originCustomHeaders?: cloudfront.OriginOptions["customHeaders"];
 }
 
 export class GatsbyDistribution extends Construct {
@@ -71,6 +75,7 @@ export class GatsbyDistribution extends Construct {
       executors,
       hostedZone,
       disableCache,
+      originCustomHeaders,
       distributionOptions,
       cacheBehaviorOptions,
     }: GatsbyDistributionProps,
@@ -171,10 +176,14 @@ export class GatsbyDistribution extends Construct {
             "LAMBDA" === ssrEngineExecutor.target
               ? new origins.HttpOrigin(
                   ssrEngineExecutor.lambdaFunctionUrlDomain,
+                  { customHeaders: originCustomHeaders },
                 )
               : new origins.LoadBalancerV2Origin(
                   ssrEngineExecutor.loadBalancer,
-                  { protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY },
+                  {
+                    customHeaders: originCustomHeaders,
+                    protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+                  },
                 ),
           ...baseDefaultBehaviorOptions,
         }
@@ -251,8 +260,12 @@ export class GatsbyDistribution extends Construct {
               // Protected attributes.
               origin:
                 "LAMBDA" === executor.target
-                  ? new origins.HttpOrigin(executor.lambdaFunctionUrlDomain)
-                  : new origins.LoadBalancerV2Origin(executor.loadBalancer),
+                  ? new origins.HttpOrigin(executor.lambdaFunctionUrlDomain, {
+                      customHeaders: originCustomHeaders,
+                    })
+                  : new origins.LoadBalancerV2Origin(executor.loadBalancer, {
+                      customHeaders: originCustomHeaders,
+                    }),
               viewerProtocolPolicy:
                 cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
