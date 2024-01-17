@@ -265,6 +265,7 @@ export class GatsbyDistribution extends Construct {
                     })
                   : new origins.LoadBalancerV2Origin(executor.loadBalancer, {
                       customHeaders: originCustomHeaders,
+                      protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
                     }),
               viewerProtocolPolicy:
                 cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
