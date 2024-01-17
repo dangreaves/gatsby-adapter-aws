@@ -52,7 +52,7 @@ export interface GatsbyDistributionProps {
   /**
    * Create a hosted zone which points at this distribution.
    */
-  hostedZone?: HostedZoneProps;
+  hostedZone?: Omit<HostedZoneProps, "distribution">;
   /**
    * Custom CloudFront distribution options.
    */
@@ -292,7 +292,10 @@ export class GatsbyDistribution extends Construct {
 
     // Construct a hosted zone.
     if (hostedZone) {
-      this.hostedZone = new HostedZone(this, "HostedZone", hostedZone);
+      this.hostedZone = new HostedZone(this, "HostedZone", {
+        ...hostedZone,
+        distribution,
+      });
     }
   }
 }
