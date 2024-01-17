@@ -26,7 +26,7 @@ import type {
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
-type DistributionOptions = Omit<
+export type GatsbyDistributionOptions = Omit<
   GatsbyDistributionProps,
   "bucket" | "executors" | "cacheBehaviorOptions"
 >;
@@ -44,9 +44,9 @@ export interface GatsbySiteProps {
   /** Custom cache behavior options */
   cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
   /** Options for primary distribution */
-  distribution?: DistributionOptions;
+  distribution?: GatsbyDistributionOptions;
   /** Options for additional distributions */
-  additionalDistributions?: Record<string, DistributionOptions>;
+  additionalDistributions?: Record<string, GatsbyDistributionOptions>;
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
   /**
