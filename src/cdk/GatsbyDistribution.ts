@@ -6,6 +6,8 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
+import { HostedZone, HostedZoneProps } from "./HostedZone.js";
+
 import type { Executor } from "../types.js";
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
@@ -26,11 +28,6 @@ type EditableDistributionOptions = Omit<
   "defaultRootObject" | "errorResponses" | "defaultBehavior"
 > & {
   additionalBehaviors?: Record<string, EditableBehaviorOptions>;
-  /**
-   * Disable the cache for this distribution.
-   * Cache-Control headers will be overridden in responses.
-   */
-  disableCache?: boolean;
 };
 
 export interface GatsbyDistributionProps {
@@ -47,11 +44,23 @@ export interface GatsbyDistributionProps {
     /** Cache behavior options for functions (not including SSR engine) */
     functions?: EditableBehaviorOptions;
   };
-  /** Custom CloudFront distribution options */
+  /**
+   * Disable the cache for this distribution.
+   * Cache-Control headers will be overridden in responses.
+   */
+  disableCache?: boolean;
+  /**
+   * Create a hosted zone which points at this distribution.
+   */
+  hostedZone?: HostedZoneProps;
+  /**
+   * Custom CloudFront distribution options.
+   */
   distributionOptions?: EditableDistributionOptions;
 }
 
 export class GatsbyDistribution extends Construct {
+  readonly hostedZone?: HostedZone;
   readonly distribution: cloudfront.Distribution;
 
   constructor(
@@ -60,8 +69,10 @@ export class GatsbyDistribution extends Construct {
     {
       bucket,
       executors,
+      hostedZone,
+      disableCache,
+      distributionOptions,
       cacheBehaviorOptions,
-      distributionOptions: { disableCache, ...distributionOptions } = {},
     }: GatsbyDistributionProps,
   ) {
     super(scope, id);
@@ -254,18 +265,20 @@ export class GatsbyDistribution extends Construct {
     };
 
     // Construct CloudFront distribution.
-    const distribution = new cloudfront.Distribution(
+    const distribution = (this.distribution = new cloudfront.Distribution(
       this,
       "Distribution",
       distributionProps,
-    );
+    ));
 
     // Output the distribution domain name.
     new cdk.CfnOutput(this, "DomainNameOutput", {
       value: distribution.domainName,
     });
 
-    // Exports.
-    this.distribution = distribution;
+    // Construct a hosted zone.
+    if (hostedZone) {
+      this.hostedZone = new HostedZone(this, "HostedZone", hostedZone);
+    }
   }
 }

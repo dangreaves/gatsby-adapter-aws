@@ -26,6 +26,11 @@ import type {
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
+type DistributionOptions = Omit<
+  GatsbyDistributionProps,
+  "bucket" | "executors" | "cacheBehaviorOptions"
+>;
+
 export interface GatsbySiteProps {
   /** Path to Gatsby directory. */
   gatsbyDir: string;
@@ -38,13 +43,10 @@ export interface GatsbySiteProps {
   resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
   /** Custom cache behavior options */
   cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
-  /** Custom CloudFront distribution options */
-  distributionOptions?: GatsbyDistributionProps["distributionOptions"];
-  /** Options for additional CloudFront distributions */
-  additionalDistributionOptions?: Record<
-    string,
-    GatsbyDistributionProps["distributionOptions"]
-  >;
+  /** Options for primary distribution */
+  distribution?: DistributionOptions;
+  /** Options for additional distributions */
+  additionalDistributions?: Record<string, DistributionOptions>;
   /** VPC (Required for Fargate executors). */
   vpc?: ec2.IVpc;
   /**
@@ -81,11 +83,11 @@ export class GatsbySite extends Construct {
     {
       vpc,
       gatsbyDir,
-      distributionOptions,
+      distribution,
       cacheBehaviorOptions,
       resolveExecutorOptions,
+      additionalDistributions,
       bucketDeploymentOptions,
-      additionalDistributionOptions,
       ssrExecutorOptions = { target: "LAMBDA" },
     }: GatsbySiteProps,
   ) {
@@ -243,20 +245,20 @@ export class GatsbySite extends Construct {
 
     // Create distribution.
     this.distribution = new GatsbyDistribution(this, "Distribution", {
+      ...distribution,
       bucket,
       executors,
-      distributionOptions,
       cacheBehaviorOptions,
     });
 
     // Create additional distributions.
-    Object.entries(additionalDistributionOptions ?? {}).forEach(
-      ([key, distributionOptions]) => {
+    Object.entries(additionalDistributions ?? {}).forEach(
+      ([key, distribution]) => {
         this.additionalDistributions.push(
           new GatsbyDistribution(this, `Distribution-${key}`, {
+            ...distribution,
             bucket,
             executors,
-            distributionOptions,
             cacheBehaviorOptions,
           }),
         );
