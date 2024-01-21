@@ -16,11 +16,11 @@ import {
 } from "./GatsbyDistribution.js";
 
 import type {
-  Executor,
+  GatsbyFunction,
   IManifest,
-  ExecutorLambda,
-  ExecutorFargate,
-  ExecutorOptions,
+  GatsbyFunctionLambda,
+  GatsbyFunctionFargate,
+  GatsbyFunctionOptions,
   IFunctionDefinition,
 } from "../types.js";
 
@@ -28,19 +28,19 @@ import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
 export type GatsbyDistributionOptions = Omit<
   GatsbyDistributionProps,
-  "bucket" | "executors" | "cacheBehaviorOptions"
+  "bucket" | "gatsbyFunctions" | "cacheBehaviorOptions"
 >;
 
 export interface GatsbySiteProps {
   /** Path to Gatsby directory. */
   gatsbyDir: string;
   /**
-   * Executor options for SSR engine.
+   * Options for SSR engine.
    * Defaults to using a Lambda function.
    */
-  ssrExecutorOptions?: ExecutorOptions;
-  /** Resolve executor options for the given function. */
-  resolveExecutorOptions?: (fn: IFunctionDefinition) => ExecutorOptions;
+  ssrOptions?: GatsbyFunctionOptions;
+  /** Resolve gatsby function options for the given function. */
+  gatsbyFunctionOptions?: (fn: IFunctionDefinition) => GatsbyFunctionOptions;
   /** Custom cache behavior options */
   cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
   /** Options for primary distribution */
@@ -63,8 +63,8 @@ export interface GatsbySiteProps {
   >;
 }
 
-/** Executors run in Lambda by default. */
-const DEFAULT_EXECUTOR_OPTIONS: ExecutorOptions = {
+/** Gatsby Functions run in Lambda by default. */
+const DEFAULT_GATSBY_FUNCTION_OPTIONS: GatsbyFunctionOptions = {
   target: "LAMBDA",
 };
 
@@ -84,11 +84,11 @@ export class GatsbySite extends Construct {
       vpc,
       gatsbyDir,
       distribution,
+      gatsbyFunctionOptions,
       cacheBehaviorOptions,
-      resolveExecutorOptions,
       additionalDistributions,
       bucketDeploymentOptions,
-      ssrExecutorOptions = { target: "LAMBDA" },
+      ssrOptions = DEFAULT_GATSBY_FUNCTION_OPTIONS,
     }: GatsbySiteProps,
   ) {
     super(scope, id);
@@ -101,13 +101,13 @@ export class GatsbySite extends Construct {
       path.join(this.adapterDir, "manifest.json"),
     ) as IManifest;
 
-    // Resolve executor options for each manifest function.
-    const fnsWithExecutorOptions = this.manifest.functions.map((fn) => {
+    // Resolve target options for each manifest function.
+    const functionsWithOptions = this.manifest.functions.map((fn) => {
       const isSsrEngine = SSR_ENGINE_FUNCTION_ID === fn.functionId;
 
-      const executorOptions = isSsrEngine
-        ? ssrExecutorOptions
-        : resolveExecutorOptions?.(fn) ?? DEFAULT_EXECUTOR_OPTIONS;
+      const options = isSsrEngine
+        ? ssrOptions
+        : gatsbyFunctionOptions?.(fn) ?? DEFAULT_GATSBY_FUNCTION_OPTIONS;
 
       const functionDir = path.join(
         this.adapterDir,
@@ -117,15 +117,15 @@ export class GatsbySite extends Construct {
 
       return {
         ...fn,
+        options,
         isSsrEngine,
         functionDir,
-        executorOptions,
       };
     });
 
-    // At least one executor uses fargate.
-    const needsFargate = fnsWithExecutorOptions.some(
-      ({ executorOptions }) => "FARGATE" === executorOptions.target,
+    // At least one function uses fargate.
+    const needsFargate = functionsWithOptions.some(
+      ({ options }) => "FARGATE" === options.target,
     );
 
     // Check that VPC is defined if fargate needed.
@@ -141,25 +141,25 @@ export class GatsbySite extends Construct {
         ? new ecs.Cluster(this, "Cluster", { vpc })
         : null;
 
-    // Resolve executors for each manifest function.
-    const executors = fnsWithExecutorOptions.reduce((acc, fn) => {
-      const { executorOptions, isSsrEngine } = fn;
+    // Resolve gatsby functions for each manifest function.
+    const gatsbyFunctions = functionsWithOptions.reduce((acc, fn) => {
+      const { options, isSsrEngine } = fn;
 
-      if ("DISABLED" === executorOptions.target) return acc;
+      if ("DISABLED" === options.target) return acc;
 
       const entryPointDir = path.dirname(fn.pathToEntryPoint);
 
-      if ("LAMBDA" === executorOptions.target) {
+      if ("LAMBDA" === options.target) {
         const lambdaFunction = new lambda.Function(
           this,
           `Function-${fn.functionId}`,
           {
             handler: `${entryPointDir}/handler.handler`,
             timeout:
-              executorOptions.timeout ?? isSsrEngine
+              options.timeout ?? isSsrEngine
                 ? cdk.Duration.seconds(30)
                 : cdk.Duration.minutes(1),
-            memorySize: executorOptions.memorySize ?? isSsrEngine ? 1024 : 512,
+            memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
             runtime: lambda.Runtime.NODEJS_18_X,
             code: lambda.Code.fromAsset(fn.functionDir),
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
@@ -167,10 +167,10 @@ export class GatsbySite extends Construct {
         );
 
         const lambdaAlias = lambdaFunction.addAlias("current", {
-          ...(executorOptions.provisionedConcurrentExecutions
+          ...(options.provisionedConcurrentExecutions
             ? {
                 provisionedConcurrentExecutions:
-                  executorOptions.provisionedConcurrentExecutions,
+                  options.provisionedConcurrentExecutions,
               }
             : {}),
         });
@@ -179,8 +179,8 @@ export class GatsbySite extends Construct {
           authType: lambda.FunctionUrlAuthType.NONE,
         });
 
-        const executor: ExecutorLambda = {
-          executorId: fn.functionId,
+        const gatsbyFunction: GatsbyFunctionLambda = {
+          id: fn.functionId,
           name: fn.name,
           target: "LAMBDA",
           lambdaAlias,
@@ -196,10 +196,10 @@ export class GatsbySite extends Construct {
           ),
         };
 
-        return [...acc, executor];
+        return [...acc, gatsbyFunction];
       }
 
-      if ("FARGATE" === executorOptions.target) {
+      if ("FARGATE" === options.target) {
         if (!cluster) {
           throw new Error(
             "Cannot construct a FARGATE executor target without a cluster.",
@@ -211,8 +211,8 @@ export class GatsbySite extends Construct {
           `Service-${fn.functionId}`,
           {
             cluster,
-            cpu: executorOptions.cpu ?? 1024,
-            memoryLimitMiB: executorOptions.memoryLimitMiB ?? 2048,
+            cpu: options.cpu ?? 1024,
+            memoryLimitMiB: options.memoryLimitMiB ?? 2048,
             circuitBreaker: { rollback: true },
             taskImageOptions: {
               image: ecs.ContainerImage.fromAsset(fn.functionDir),
@@ -220,19 +220,19 @@ export class GatsbySite extends Construct {
           },
         );
 
-        const executor: ExecutorFargate = {
-          executorId: fn.functionId,
+        const gatsbyFunction: GatsbyFunctionFargate = {
+          id: fn.functionId,
           name: fn.name,
           target: "FARGATE",
           fargateService: service.service,
           loadBalancer: service.loadBalancer,
         };
 
-        return [...acc, executor];
+        return [...acc, gatsbyFunction];
       }
 
       return acc;
-    }, [] as Executor[]);
+    }, [] as GatsbyFunction[]);
 
     // Create bucket to store static assets.
     const bucket = (this.bucket = new s3.Bucket(this, "Bucket", {
@@ -249,7 +249,7 @@ export class GatsbySite extends Construct {
     this.distribution = new GatsbyDistribution(this, "Distribution", {
       ...distribution,
       bucket,
-      executors,
+      gatsbyFunctions,
       cacheBehaviorOptions,
     });
 
@@ -260,7 +260,7 @@ export class GatsbySite extends Construct {
           new GatsbyDistribution(this, `Distribution-${key}`, {
             ...distribution,
             bucket,
-            executors,
+            gatsbyFunctions,
             cacheBehaviorOptions,
           }),
         );

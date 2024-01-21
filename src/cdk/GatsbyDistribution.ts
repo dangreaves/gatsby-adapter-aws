@@ -8,7 +8,7 @@ import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
 
 import { HostedZone, HostedZoneProps } from "./HostedZone.js";
 
-import type { Executor } from "../types.js";
+import type { GatsbyFunction } from "../types.js";
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
@@ -33,8 +33,8 @@ type EditableDistributionOptions = Omit<
 export interface GatsbyDistributionProps {
   /** Bucket for static assets */
   bucket: s3.IBucket;
-  /** Array of function executors */
-  executors: Executor[];
+  /** Array of Gatsby Functions */
+  gatsbyFunctions: GatsbyFunction[];
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
@@ -72,9 +72,9 @@ export class GatsbyDistribution extends Construct {
     id: string,
     {
       bucket,
-      executors,
       hostedZone,
       disableCache,
+      gatsbyFunctions,
       originCustomHeaders,
       distributionOptions,
       cacheBehaviorOptions,
@@ -82,14 +82,14 @@ export class GatsbyDistribution extends Construct {
   ) {
     super(scope, id);
 
-    // Attempt to resolve SSR engine executor.
-    const ssrEngineExecutor = executors.find(
-      ({ executorId }) => SSR_ENGINE_FUNCTION_ID === executorId,
+    // Attempt to resolve SSR function.
+    const ssrEngineFunction = gatsbyFunctions.find(
+      ({ id }) => SSR_ENGINE_FUNCTION_ID === id,
     );
 
-    // Resolve additional executors.
-    const additionalExecutors = executors.filter(
-      ({ executorId }) => SSR_ENGINE_FUNCTION_ID !== executorId,
+    // Resolve additional functions.
+    const additionalFunctions = gatsbyFunctions.filter(
+      ({ id }) => SSR_ENGINE_FUNCTION_ID !== id,
     );
 
     // Construct CloudFront viewer request function for static assets.
@@ -165,7 +165,7 @@ export class GatsbyDistribution extends Construct {
     };
 
     // Construct default cache behavior.
-    const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineExecutor
+    const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineFunction
       ? {
           // Default attributes.
           cachePolicy,
@@ -173,13 +173,13 @@ export class GatsbyDistribution extends Construct {
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
           origin:
-            "LAMBDA" === ssrEngineExecutor.target
+            "LAMBDA" === ssrEngineFunction.target
               ? new origins.HttpOrigin(
-                  ssrEngineExecutor.lambdaFunctionUrlDomain,
+                  ssrEngineFunction.lambdaFunctionUrlDomain,
                   { customHeaders: originCustomHeaders },
                 )
               : new origins.LoadBalancerV2Origin(
-                  ssrEngineExecutor.loadBalancer,
+                  ssrEngineFunction.loadBalancer,
                   {
                     customHeaders: originCustomHeaders,
                     protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
@@ -208,7 +208,7 @@ export class GatsbyDistribution extends Construct {
       // Default attributes.
       ...distributionOptions,
       // Protected attributes.
-      ...(ssrEngineExecutor ? {} : { defaultRootObject: "index.html" }),
+      ...(ssrEngineFunction ? {} : { defaultRootObject: "index.html" }),
       errorResponses: [
         {
           httpStatus: 403,
@@ -220,7 +220,7 @@ export class GatsbyDistribution extends Construct {
       additionalBehaviors: {
         // Gatsby puts page-data files into the asset prefix, but we actually need these to go
         // to the SSR engine instead, with the asset prefix trimmed off.
-        ...(ssrEngineExecutor
+        ...(ssrEngineFunction
           ? {
               "*page-data.json": {
                 ...defaultBehavior,
@@ -249,24 +249,31 @@ export class GatsbyDistribution extends Construct {
           ],
         },
         // Add a new behavior for each additional function.
-        ...additionalExecutors.reduce(
-          (acc, executor) => ({
+        ...additionalFunctions.reduce(
+          (acc, gatsbyFunction) => ({
             ...acc,
-            [executor.name]: {
+            [gatsbyFunction.name]: {
               // Default attributes.
               cachePolicy,
               // User attributes.
               ...cacheBehaviorOptions?.functions,
               // Protected attributes.
               origin:
-                "LAMBDA" === executor.target
-                  ? new origins.HttpOrigin(executor.lambdaFunctionUrlDomain, {
-                      customHeaders: originCustomHeaders,
-                    })
-                  : new origins.LoadBalancerV2Origin(executor.loadBalancer, {
-                      customHeaders: originCustomHeaders,
-                      protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
-                    }),
+                "LAMBDA" === gatsbyFunction.target
+                  ? new origins.HttpOrigin(
+                      gatsbyFunction.lambdaFunctionUrlDomain,
+                      {
+                        customHeaders: originCustomHeaders,
+                      },
+                    )
+                  : new origins.LoadBalancerV2Origin(
+                      gatsbyFunction.loadBalancer,
+                      {
+                        customHeaders: originCustomHeaders,
+                        protocolPolicy:
+                          cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+                      },
+                    ),
               viewerProtocolPolicy:
                 cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },

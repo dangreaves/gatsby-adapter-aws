@@ -29,14 +29,14 @@ export interface IAsset {
   objectKey: string;
 }
 
-export type ExecutorOptions =
-  | ExecutorOptionsDisabled
-  | ExecutorOptionsLambda
-  | ExecutorOptionsFargate;
+export type GatsbyFunctionOptions =
+  | GatsbyFunctionOptionsDisabled
+  | GatsbyFunctionOptionsLambda
+  | GatsbyFunctionOptionsFargate;
 
-export type ExecutorOptionsDisabled = { target: "DISABLED" };
+export type GatsbyFunctionOptionsDisabled = { target: "DISABLED" };
 
-export type ExecutorOptionsLambda = {
+export type GatsbyFunctionOptionsLambda = {
   target: "LAMBDA";
   /**
    * Timeout duration for Lambda function.
@@ -59,7 +59,7 @@ export type ExecutorOptionsLambda = {
   provisionedConcurrentExecutions?: lambda.AliasOptions["provisionedConcurrentExecutions"];
 };
 
-export type ExecutorOptionsFargate = {
+export type GatsbyFunctionOptionsFargate = {
   target: "FARGATE";
   /**
    * vCPU size for ECS task.
@@ -73,9 +73,9 @@ export type ExecutorOptionsFargate = {
   memoryLimitMiB?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["memoryLimitMiB"];
 };
 
-export type Executor = ExecutorLambda | ExecutorFargate;
+export type GatsbyFunction = GatsbyFunctionLambda | GatsbyFunctionFargate;
 
-export interface ExecutorLambda extends ExecutorBase {
+export interface GatsbyFunctionLambda extends BaseGatsbyFunction {
   target: "LAMBDA";
   lambdaAlias: lambda.IAlias;
   lambdaFunction: lambda.IFunction;
@@ -83,13 +83,13 @@ export interface ExecutorLambda extends ExecutorBase {
   lambdaFunctionUrlDomain: string;
 }
 
-export interface ExecutorFargate extends ExecutorBase {
+export interface GatsbyFunctionFargate extends BaseGatsbyFunction {
   target: "FARGATE";
   fargateService: ecs.IFargateService;
   loadBalancer: elb.IApplicationLoadBalancer;
 }
 
-export interface ExecutorBase {
-  executorId: string;
+export interface BaseGatsbyFunction {
+  id: string;
   name: string;
 }
