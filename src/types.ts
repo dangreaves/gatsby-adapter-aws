@@ -91,4 +91,5 @@ export interface ExecutorFargate extends ExecutorBase {
 
 export interface ExecutorBase {
   executorId: string;
+  name: string;
 }

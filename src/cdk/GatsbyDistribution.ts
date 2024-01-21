@@ -252,7 +252,7 @@ export class GatsbyDistribution extends Construct {
         ...additionalExecutors.reduce(
           (acc, executor) => ({
             ...acc,
-            [executor.executorId]: {
+            [executor.name]: {
               // Default attributes.
               cachePolicy,
               // User attributes.

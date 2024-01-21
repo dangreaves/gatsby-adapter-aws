@@ -181,6 +181,7 @@ export class GatsbySite extends Construct {
 
         const executor: ExecutorLambda = {
           executorId: fn.functionId,
+          name: fn.name,
           target: "LAMBDA",
           lambdaAlias,
           lambdaFunction,
@@ -221,6 +222,7 @@ export class GatsbySite extends Construct {
 
         const executor: ExecutorFargate = {
           executorId: fn.functionId,
+          name: fn.name,
           target: "FARGATE",
           fargateService: service.service,
           loadBalancer: service.loadBalancer,
