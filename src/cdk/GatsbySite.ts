@@ -4,7 +4,6 @@ import { Construct } from "constructs";
 
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
@@ -16,12 +15,12 @@ import {
 } from "./GatsbyDistribution.js";
 
 import type {
-  GatsbyFunction,
   IManifest,
+  GatsbyFunction,
+  IFunctionDefinition,
   GatsbyFunctionLambda,
   GatsbyFunctionFargate,
   GatsbyFunctionOptions,
-  IFunctionDefinition,
 } from "../types.js";
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
@@ -47,8 +46,8 @@ export interface GatsbySiteProps {
   distribution?: GatsbyDistributionOptions;
   /** Options for additional distributions */
   additionalDistributions?: Record<string, GatsbyDistributionOptions>;
-  /** VPC (Required for Fargate executors). */
-  vpc?: ec2.IVpc;
+  /** ECS cluster (Required for Fargate executors). */
+  cluster?: ecs.ICluster;
   /**
    * Options for the S3 bucket deployment construct.
    *
@@ -81,7 +80,7 @@ export class GatsbySite extends Construct {
     scope: Construct,
     id: string,
     {
-      vpc,
+      cluster,
       gatsbyDir,
       distribution,
       gatsbyFunctionOptions,
@@ -128,18 +127,12 @@ export class GatsbySite extends Construct {
       ({ options }) => "FARGATE" === options.target,
     );
 
-    // Check that VPC is defined if fargate needed.
-    if (needsFargate && "undefined" === typeof vpc) {
+    // Check that cluster is defined if fargate needed.
+    if (needsFargate && !cluster) {
       throw new Error(
-        "You must provide a VPC when using the FARGATE executor target.",
+        "You must provide an ECS cluster when using the FARGATE executor target.",
       );
     }
-
-    // Configure ECS cluster if needed.
-    const cluster =
-      needsFargate && "undefined" !== typeof vpc
-        ? new ecs.Cluster(this, "Cluster", { vpc })
-        : null;
 
     // Resolve gatsby functions for each manifest function.
     const gatsbyFunctions = functionsWithOptions.reduce((acc, fn) => {

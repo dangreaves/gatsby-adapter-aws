@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
 
-import { VpcStack } from "@/lib/stacks/vpc.js";
+// import { VpcStack } from "@/lib/stacks/vpc.js";
 import { GatsbyStack } from "@/lib/stacks/gatsby.js";
-import { CodePipelineStack } from "@/lib/stacks/code-pipeline.js";
+// import { CodePipelineStack } from "@/lib/stacks/code-pipeline.js";
 
 const app = new cdk.App();
 
@@ -21,15 +21,15 @@ const env: cdk.Environment = {
  * CodePipeline stack which continuously deploys this project.
  * @todo You don't need this if you're deploying with GitLab CI/GitHub actions etc.
  */
-new CodePipelineStack(app, "gatsby-code-pipeline", { env });
+// new CodePipelineStack(app, "gatsby-code-pipeline", { env });
 
 /**
  * You probably want to import an existing VPC instead.
  * @see https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ec2-readme.html#importing-an-existing-vpc
  */
-const { vpc } = new VpcStack(app, "gatsby-vpc", { env });
+// const { vpc } = new VpcStack(app, "gatsby-vpc", { env });
 
 /**
- * Deploy Gatsby, let's goooo!
+ * Deploy Gatsby.
  */
-new GatsbyStack(app, "gatsby", { vpc, env });
+new GatsbyStack(app, "gatsby", { env, gatsbyDir: "../../examples/ssr" });
