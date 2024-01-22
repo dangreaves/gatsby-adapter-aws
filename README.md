@@ -24,6 +24,12 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
 7. [Gatsby Functions](#gatsby-functions)
 8. [Server-side Rendering (SSR)](#server-side-rendering-ssr)
 9. [Cache behavior options](#cache-behavior-options)
+   1. [Distribution options](#distribution-options)
+   2. [Changing CloudFront options](#changing-cloudfront-options)
+   3. [Disabling the cache](#disabling-the-cache)
+   4. [Send custom headers to origin](#send-custom-headers-to-origin)
+   5. [Configure a hosted zone](#configure-a-hosted-zone)
+   6. [Deploying additional distributions](#deploying-additional-distributions)
 
 ## Prerequisites
 
@@ -299,6 +305,109 @@ new GatsbySite(this, "GatsbySite", {
           eventType: cloudfront.LambdaEdgeEventType.ORIGIN_RESPONSE,
         },
       ],
+    },
+  },
+});
+```
+
+## Distribution options
+
+If you want to change options for the CloudFront distribution itself, use the `distribution` option.
+
+### Changing CloudFront options
+
+The CloudFront distribution options can be changed.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    distributionOptions: {
+      certificate,
+      domainNames: ["example.com"],
+    },
+  },
+});
+```
+
+### Disabling the cache
+
+To disable the cache entirely, and always hit your origins. This will configure CloudFront to not store any cache, and will also override response headers to avoid caching in the browser.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    disableCache: true,
+  },
+});
+```
+
+### Send custom headers to origin
+
+To send a custom header to your origins, use the `originCustomHeaders` option. This is useful if you need to identity from your functions which distribution sent the request.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    originCustomHeaders: {
+      "x-gatsby-preview": "true",
+    },
+  },
+});
+```
+
+### Configure a hosted zone
+
+To create a Route53 zone with an apex record which points at the distribution, use the `hostedZone` option.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    distributionOptions: {
+      certificate,
+      domainNames: ["example.com"],
+    },
+    hostedZone: {
+      domainName: "example.com",
+    },
+  },
+});
+```
+
+### Deploying additional distributions
+
+You may deploy multiple distributions for the same Gatsby site. The underlying constructs like Lambda functions etc will only be deployed once, and each distribution will point to the same resources. This is useful if you need to individually control distribution options, like cache settings.
+
+For example, your default distribution may use the default cache headers, and thus have SSR responses cache for a period of time. However, you might want a "preview" distribution which allows content editors to always see fresh content, without waiting for the cache to clear.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    distributionOptions: {
+      certificate: mainCert,
+      domainNames: ["example.com"],
+    },
+    hostedZone: {
+      domainName: "example.com",
+    },
+  },
+  additionalDistributions: {
+    preview: {
+      disableCache: true,
+      distributionOptions: {
+        certificate: previewCert,
+        domainNames: ["preview.example.com"],
+      },
+      hostedZone: {
+        domainName: "preview.example.com",
+      },
+      originCustomHeaders: {
+        "x-gatsby-preview": "true",
+      },
     },
   },
 });
