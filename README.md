@@ -17,12 +17,13 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
 2. [Installation](#installation)
 3. [Adapter](#adapter)
 4. [Construct](#construct)
-5. [Static assets](#static-assets)
+5. [Asset prefix](#asset-prefix)
+6. [Static assets](#static-assets)
    1. [Size limits](#size-limits)
    2. [Cache control](#cache-control)
-6. [Gatsby Functions](#gatsby-functions)
-7. [Server-side Rendering (SSR)](#server-side-rendering-ssr)
-8. [Cache behavior options](#cache-behavior-options)
+7. [Gatsby Functions](#gatsby-functions)
+8. [Server-side Rendering (SSR)](#server-side-rendering-ssr)
+9. [Cache behavior options](#cache-behavior-options)
 
 ## Prerequisites
 
@@ -44,6 +45,7 @@ import { createAdapter } from "@dangreaves/gatsby-adapter-aws/adapter.js";
 /** @type {import('gatsby').GatsbyConfig} */
 export default {
   adapter: createAdapter(),
+  assetPrefix: "/assets", // See "Asset prefix" section below
 };
 ```
 
@@ -67,6 +69,18 @@ export class GatsbyStack extends cdk.Stack {
     });
   }
 }
+```
+
+## Asset prefix
+
+When building Gatsby, you must set the [asset prefix](https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/asset-prefix/) to `/assets`. This is so that CloudFront can determine which requests to send to the S3 origin, regardless of where the default cache behavior points.
+
+You must add `assetPrefix` to your config file (see above) and specifically enable asset prefixing when building.
+
+```sh
+gatsby build --prefix-paths
+# or
+PREFIX_PATHS=true gatsby build
 ```
 
 ## Static assets
@@ -196,8 +210,7 @@ new GatsbySite(this, "GatsbySite", {
 
 ## Server-side Rendering (SSR)
 
-If your Gatsby site includes a `getServerData` export on any of the pages, then Gatsby will export an "SSR engine" function for deployment (see [Using Server-side Rendering (SSR)
-](https://www.gatsbyjs.com/docs/how-to/rendering-options/using-server-side-rendering/)). This function is responsible for rendering the data for your SSR pages, both in HTML format (for document requests) and in JSON format for page-data requests.
+If your Gatsby site includes a `getServerData` export on any of the pages, then Gatsby will export an "SSR engine" function for deployment (see [Using Server-side Rendering](https://www.gatsbyjs.com/docs/how-to/rendering-options/using-server-side-rendering/)). This function is responsible for rendering the data for your SSR pages, both in HTML format (for document requests) and in JSON format for page-data requests.
 
 This adapter treats the SSR engine just like a Gatsby Function. You can use AWS Lambda or AWS Fargate to process the requests. If you have a small site, then Lambda (the default) should be enough, but if you have a large site (and thus a large SSR function), you may want to use AWS Fargate.
 
