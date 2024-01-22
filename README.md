@@ -24,12 +24,12 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
 7. [Gatsby Functions](#gatsby-functions)
 8. [Server-side Rendering (SSR)](#server-side-rendering-ssr)
 9. [Cache behavior options](#cache-behavior-options)
-   1. [Distribution options](#distribution-options)
-   2. [Changing CloudFront options](#changing-cloudfront-options)
-   3. [Disabling the cache](#disabling-the-cache)
-   4. [Send custom headers to origin](#send-custom-headers-to-origin)
-   5. [Configure a hosted zone](#configure-a-hosted-zone)
-   6. [Deploying additional distributions](#deploying-additional-distributions)
+10. [Distribution options](#distribution-options)
+    1. [Changing CloudFront options](#changing-cloudfront-options)
+    2. [Disabling the cache](#disabling-the-cache)
+    3. [Send custom headers to origin](#send-custom-headers-to-origin)
+    4. [Configure a hosted zone](#configure-a-hosted-zone)
+    5. [Deploying additional distributions](#deploying-additional-distributions)
 
 ## Prerequisites
 
