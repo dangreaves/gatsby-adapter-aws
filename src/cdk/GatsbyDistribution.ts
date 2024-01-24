@@ -50,6 +50,12 @@ export interface GatsbyDistributionProps {
    */
   disableCache?: boolean;
   /**
+   * Disable search indexing for this distribution.
+   * The `X-Robots-Tag: noindex` header will be appended to all responses.
+   * @see https://developers.google.com/search/docs/crawling-indexing/block-indexing
+   */
+  disableSearchIndexing?: boolean;
+  /**
    * Create a hosted zone which points at this distribution.
    */
   hostedZone?: Omit<HostedZoneProps, "distribution">;
@@ -78,6 +84,7 @@ export class GatsbyDistribution extends Construct {
       originCustomHeaders,
       distributionOptions,
       cacheBehaviorOptions,
+      disableSearchIndexing,
     }: GatsbyDistributionProps,
   ) {
     super(scope, id);
@@ -146,6 +153,9 @@ export class GatsbyDistribution extends Construct {
             // Override the Cache-Control header to no-store when disable cache is enabled for this distribution.
             ...(disableCache
               ? [{ header: "Cache-Control", value: "no-store", override: true }]
+              : []),
+            ...(disableSearchIndexing
+              ? [{ header: "X-Robots-Tag", value: "noindex", override: true }]
               : []),
           ],
         },

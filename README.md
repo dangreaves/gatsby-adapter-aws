@@ -27,9 +27,10 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
 10. [Distribution options](#distribution-options)
     1. [Changing CloudFront options](#changing-cloudfront-options)
     2. [Disabling the cache](#disabling-the-cache)
-    3. [Send custom headers to origin](#send-custom-headers-to-origin)
-    4. [Configure a hosted zone](#configure-a-hosted-zone)
-    5. [Deploying additional distributions](#deploying-additional-distributions)
+    3. [Block search indexing with noindex](#block-search-indexing-with-noindex)
+    4. [Send custom headers to origin](#send-custom-headers-to-origin)
+    5. [Configure a hosted zone](#configure-a-hosted-zone)
+    6. [Deploying additional distributions](#deploying-additional-distributions)
 
 ## Prerequisites
 
@@ -339,6 +340,23 @@ new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
     disableCache: true,
+  },
+});
+```
+
+### Block search indexing with noindex
+
+Search indexing can be blocked for the entire distribution using the `disableSearchIndexing` option.
+
+This will append the `X-Robots-Tag: noindex` header to all responses.
+
+See [developers.google.com/search/docs/crawling-indexing/block-indexing](https://developers.google.com/search/docs/crawling-indexing/block-indexing) for more information on how this works.
+
+```ts
+new GatsbySite(this, "GatsbySite", {
+  gatsbyDir: "./site",
+  distribution: {
+    disableSearchIndexing: true,
   },
 });
 ```
