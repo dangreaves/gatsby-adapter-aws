@@ -30,7 +30,7 @@
     "prepublishOnly": "npm run clean && npm run build"
   },
   "dependencies": {
-    "esbuild": "^0.19.12",
+    "esbuild": "^0.20.0",
     "fs-extra": "^11.2.0",
     "mime": "^4.0.1",
     "minimatch": "^9.0.3"
