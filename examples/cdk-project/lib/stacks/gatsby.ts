@@ -3,7 +3,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 
-import { GatsbySite } from "@dangreaves/gatsby-adapter-aws/cdk.js";
+import { GatsbySite } from "@dangreaves/gatsby-adapter-aws/cdk";
 
 export interface GatsbyStackProps extends cdk.StackProps {
   vpc?: ec2.IVpc;

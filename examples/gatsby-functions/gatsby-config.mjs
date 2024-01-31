@@ -1,4 +1,4 @@
-import { createAdapter } from "@dangreaves/gatsby-adapter-aws/adapter.js";
+import { createAdapter } from "@dangreaves/gatsby-adapter-aws/adapter";
 
 /** @type {import('gatsby').GatsbyConfig} */
 export default {
