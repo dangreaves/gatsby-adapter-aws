@@ -10,8 +10,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    "./cdk.js": "./dist/cdk/index.js",
-    "./adapter.js": "./dist/adapter/index.js"
+    "./cdk": "./dist/cdk/index.js",
+    "./adapter": "./dist/adapter/index.js"
   },
   "files": [
     "dist"
