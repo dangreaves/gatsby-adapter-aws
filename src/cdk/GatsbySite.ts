@@ -43,7 +43,7 @@ export interface GatsbySiteProps {
   /** Custom cache behavior options */
   cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
   /** Options for primary distribution */
-  distribution?: GatsbyDistributionOptions;
+  distribution: GatsbyDistributionOptions;
   /** Options for additional distributions */
   additionalDistributions?: Record<string, GatsbyDistributionOptions>;
   /** ECS cluster (Required for Fargate executors). */

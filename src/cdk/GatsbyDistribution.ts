@@ -35,6 +35,19 @@ export interface GatsbyDistributionProps {
   bucket: s3.IBucket;
   /** Array of Gatsby Functions */
   gatsbyFunctions: GatsbyFunction[];
+  /**
+   * CloudFront cache policy
+   *
+   * This should be externally created and reused across distributions to avoid hitting
+   * the "Cache policies per AWS account" quota.
+   *
+   * ```
+   * const cachePolicy = new cloudfront.CachePolicy(this, "CachePolicy", {
+   *   queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+   * });
+   * ```
+   */
+  cachePolicy: cloudfront.ICachePolicy;
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
@@ -79,6 +92,7 @@ export class GatsbyDistribution extends Construct {
     {
       bucket,
       hostedZone,
+      cachePolicy,
       disableCache,
       gatsbyFunctions,
       originCustomHeaders,
@@ -126,14 +140,6 @@ export class GatsbyDistribution extends Construct {
         }),
       },
     );
-
-    /**
-     * Create a cache policy which includes query strings.
-     * This can be overridden using the cacheBehaviorOptions prop.
-     */
-    const cachePolicy = new cloudfront.CachePolicy(this, "CachePolicy", {
-      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
-    });
 
     /**
      * Create a default response headers policy.

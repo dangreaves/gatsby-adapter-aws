@@ -64,6 +64,7 @@ Set `gatsbyDir` to the relative path to your Gatsby directory.
 
 ```ts
 import * as cdk from "aws-cdk-lib";
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 
 import { GatsbySite } from "@dangreaves/gatsby-adapter-aws/cdk.js";
 
@@ -71,8 +72,17 @@ export class GatsbyStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
+    /**
+     * Must be constructed externally and shared between GatsbySite constructs to
+     * avoid hitting the "Cache policies per AWS account" quota.
+     */
+    const cachePolicy = new cloudfront.CachePolicy(this, "CachePolicy", {
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+    });
+
     new GatsbySite(this, "GatsbySite", {
       gatsbyDir: "./site",
+      distribution: { cachePolicy },
     });
   }
 }
@@ -108,10 +118,9 @@ If you see these errors, use the `bucketDeploymentOptions` option to increase th
 - If the Lambda function runs out of ephemeral storage, you may see a "No space left on device" error.
 
 ```ts
-import * as cdzk from "aws-cdk-lib";
-
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   bucketDeploymentOptions: {
     memoryLimit: 2048,
     ephemeralStorageSize: cdk.Size.gibibytes(5),
@@ -169,10 +178,9 @@ If you include a [Gatsby Function](https://www.gatsbyjs.com/docs/reference/funct
 You can modify various attributes for the function using the `gatsbyFunctionOptions` option, which takes a function which receives the Gatsby function definition, and returns a set of options.
 
 ```ts
-import * as cdk from "aws-cdk-lib";
-
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   gatsbyFunctionOptions: (fn) => {
     if ("/api/intensive" === fn.name) {
       return {
@@ -193,7 +201,6 @@ This adapter also supports deploying the function to [AWS Fargate](https://aws.a
 If you choose the `FARGATE` target for one or more functions, you must also provide a `cluster`.
 
 ```ts
-import * as cdk from "aws-cdk-lib";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 
 const cluster = new ecs.Cluster(this, "Cluster", { vpc });
@@ -201,6 +208,7 @@ const cluster = new ecs.Cluster(this, "Cluster", { vpc });
 new GatsbySite(this, "GatsbySite", {
   cluster,
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   gatsbyFunctionOptions: (fn) => {
     if ("/api/intensive" === fn.name) {
       return {
@@ -228,10 +236,9 @@ Configure the SSR engine using `ssrOptions`, which takes the same input as the [
 For example, if you wanted to deploy the SSR engine to Fargate, do this.
 
 ```ts
-import * as cdk from "aws-cdk-lib";
-
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   ssrOptions: {
     target: "FARGATE",
   },
@@ -241,10 +248,9 @@ new GatsbySite(this, "GatsbySite", {
 If you wanted to deploy to Lambda, but increase the memory limit, do this.
 
 ```ts
-import * as cdk from "aws-cdk-lib";
-
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   ssrOptions: {
     target: "LAMBDA",
     memorySize: 512,
@@ -257,6 +263,7 @@ If your Gatsby site is generating an SSR function but you don't want to use it, 
 ```ts
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   ssrOptions: {
     target: "DISABLED",
   },
@@ -280,7 +287,6 @@ Each cache behavior has a set of options associated with it, which you can contr
 An example use of this option is to attach a [Lambda@Edge](https://aws.amazon.com/lambda/edge/) function to the default cache behavior.
 
 ```ts
-import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 
@@ -298,6 +304,7 @@ const originResponseFunction = new cloudfront.experimental.EdgeFunction(
 
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
+  distribution: { cachePolicy },
   cacheBehaviorOptions: {
     default: {
       edgeLambdas: [
@@ -323,6 +330,7 @@ The CloudFront distribution options can be changed.
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     distributionOptions: {
       certificate,
       domainNames: ["example.com"],
@@ -339,6 +347,7 @@ To disable the cache entirely, and always hit your origins. This will configure 
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     disableCache: true,
   },
 });
@@ -356,6 +365,7 @@ See [developers.google.com/search/docs/crawling-indexing/block-indexing](https:/
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     disableSearchIndexing: true,
   },
 });
@@ -369,6 +379,7 @@ To send a custom header to your origins, use the `originCustomHeaders` option. T
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     originCustomHeaders: {
       "x-gatsby-preview": "true",
     },
@@ -384,6 +395,7 @@ To create a Route53 zone with an apex record which points at the distribution, u
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     distributionOptions: {
       certificate,
       domainNames: ["example.com"],
@@ -405,6 +417,7 @@ For example, your default distribution may use the default cache headers, and th
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
+    cachePolicy,
     distributionOptions: {
       certificate: mainCert,
       domainNames: ["example.com"],
@@ -415,6 +428,7 @@ new GatsbySite(this, "GatsbySite", {
   },
   additionalDistributions: {
     preview: {
+      cachePolicy,
       disableCache: true,
       distributionOptions: {
         certificate: previewCert,
