@@ -11,15 +11,15 @@
     "synthesize": "cdk synthesize"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.122.0",
+    "aws-cdk-lib": "^2.124.0",
     "constructs": "^10.3.0"
   },
   "devDependencies": {
     "@dangreaves/gatsby-adapter-aws": "file:../..",
     "@tsconfig/node20": "^20.1.2",
     "@tsconfig/strictest": "^2.0.2",
-    "@types/node": "^20.11.5",
-    "aws-cdk": "^2.122.0",
+    "@types/node": "^20.11.13",
+    "aws-cdk": "^2.124.0",
     "tsx": "^4.7.0"
   }
 }
