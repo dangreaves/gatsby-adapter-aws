@@ -19,7 +19,7 @@
   "scripts": {
     "test": "vitest",
     "lint": "eslint .",
-    "prepare": "husky install",
+    "prepare": "husky",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "build": "tsup && cp -r src/assets dist/",
@@ -46,7 +46,7 @@
     "@typescript-eslint/parser": "^6.19.1",
     "eslint": "^8.56.0",
     "gatsby": "^5.13.2",
-    "husky": "^8.0.3",
+    "husky": "^9.0.7",
     "lint-staged": "^15.2.0",
     "prettier": "^3.2.4",
     "tsc-files": "^1.1.4",
