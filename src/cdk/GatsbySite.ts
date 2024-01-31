@@ -27,7 +27,7 @@ import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
 
 export type GatsbyDistributionOptions = Omit<
   GatsbyDistributionProps,
-  "bucket" | "gatsbyFunctions" | "cacheBehaviorOptions"
+  "bucket" | "gatsbyFunctions"
 >;
 
 export interface GatsbySiteProps {
@@ -40,8 +40,6 @@ export interface GatsbySiteProps {
   ssrOptions?: GatsbyFunctionOptions;
   /** Resolve gatsby function options for the given function. */
   gatsbyFunctionOptions?: (fn: IFunctionDefinition) => GatsbyFunctionOptions;
-  /** Custom cache behavior options */
-  cacheBehaviorOptions?: GatsbyDistributionProps["cacheBehaviorOptions"];
   /** Options for primary distribution */
   distribution: GatsbyDistributionOptions;
   /** Options for additional distributions */
@@ -84,7 +82,6 @@ export class GatsbySite extends Construct {
       gatsbyDir,
       distribution,
       gatsbyFunctionOptions,
-      cacheBehaviorOptions,
       additionalDistributions,
       bucketDeploymentOptions,
       ssrOptions = DEFAULT_GATSBY_FUNCTION_OPTIONS,
@@ -243,7 +240,6 @@ export class GatsbySite extends Construct {
       ...distribution,
       bucket,
       gatsbyFunctions,
-      cacheBehaviorOptions,
     });
 
     // Create additional distributions.
@@ -254,7 +250,6 @@ export class GatsbySite extends Construct {
             ...distribution,
             bucket,
             gatsbyFunctions,
-            cacheBehaviorOptions,
           }),
         );
       },

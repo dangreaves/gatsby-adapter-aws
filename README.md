@@ -304,15 +304,17 @@ const originResponseFunction = new cloudfront.experimental.EdgeFunction(
 
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
-  distribution: { cachePolicy },
-  cacheBehaviorOptions: {
-    default: {
-      edgeLambdas: [
-        {
-          functionVersion: originResponseFunction.currentVersion,
-          eventType: cloudfront.LambdaEdgeEventType.ORIGIN_RESPONSE,
-        },
-      ],
+  distribution: {
+    cachePolicy,
+    cacheBehaviorOptions: {
+      default: {
+        edgeLambdas: [
+          {
+            functionVersion: originResponseFunction.currentVersion,
+            eventType: cloudfront.LambdaEdgeEventType.ORIGIN_RESPONSE,
+          },
+        ],
+      },
     },
   },
 });
@@ -341,32 +343,64 @@ new GatsbySite(this, "GatsbySite", {
 
 ### Disabling the cache
 
-To disable the cache entirely, and always hit your origins. This will configure CloudFront to not store any cache, and will also override response headers to avoid caching in the browser.
+To disable the cache entirely, you should set the cache policy to `CACHING_DISABLED` and set a `ResponseHeadersPolicy` to send the `Cache-Control` header with value `no-store`. This will prevent both CloudFront, and your users browsers from caching the responses. Every request will hit the origin.
 
 ```ts
+import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
+
+const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
+  this,
+  "ResponseHeadersPolicy",
+  {
+    customHeadersBehavior: {
+      customHeaders: [
+        { header: "Cache-Control", value: "no-store", override: true },
+      ],
+    },
+  },
+);
+
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
-    cachePolicy,
-    disableCache: true,
+    cacheBehaviorOptions: {
+      default: { responseHeadersPolicy },
+      assets: { responseHeadersPolicy },
+      functions: { responseHeadersPolicy },
+    },
+    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
   },
 });
 ```
 
 ### Block search indexing with noindex
 
-Search indexing can be blocked for the entire distribution using the `disableSearchIndexing` option.
-
-This will append the `X-Robots-Tag: noindex` header to all responses.
+Search indexing can be blocked for the entire distribution by appending a `X-Robots-Tag: noindex` header to all responses.
 
 See [developers.google.com/search/docs/crawling-indexing/block-indexing](https://developers.google.com/search/docs/crawling-indexing/block-indexing) for more information on how this works.
 
 ```ts
+const responseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
+  this,
+  "ResponseHeadersPolicy",
+  {
+    customHeadersBehavior: {
+      customHeaders: [
+        { header: "X-Robots-Tag", value: "noindex", override: true },
+      ],
+    },
+  },
+);
+
 new GatsbySite(this, "GatsbySite", {
   gatsbyDir: "./site",
   distribution: {
     cachePolicy,
-    disableSearchIndexing: true,
+    cacheBehaviorOptions: {
+      default: { responseHeadersPolicy },
+      assets: { responseHeadersPolicy },
+      functions: { responseHeadersPolicy },
+    },
   },
 });
 ```

@@ -18,18 +18,6 @@ const getFilename = () => fileURLToPath(import.meta.url);
 const getDirname = () => path.dirname(getFilename());
 const __dirname = getDirname();
 
-type EditableBehaviorOptions = Omit<
-  cloudfront.BehaviorOptions,
-  "origin" | "viewerProtocolPolicy" | "responseHeadersPolicy"
-> & { responseHeadersPolicyProps?: cloudfront.ResponseHeadersPolicyProps };
-
-type EditableDistributionOptions = Omit<
-  cloudfront.DistributionProps,
-  "defaultRootObject" | "errorResponses" | "defaultBehavior"
-> & {
-  additionalBehaviors?: Record<string, EditableBehaviorOptions>;
-};
-
 export interface GatsbyDistributionProps {
   /** Bucket for static assets */
   bucket: s3.IBucket;
@@ -51,23 +39,12 @@ export interface GatsbyDistributionProps {
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
-    default?: EditableBehaviorOptions;
+    default?: cloudfront.BehaviorOptions;
     /** Cache behavior options for static assets (prefixed by /assets) */
-    assets?: EditableBehaviorOptions;
+    assets?: cloudfront.BehaviorOptions;
     /** Cache behavior options for functions (not including SSR engine) */
-    functions?: EditableBehaviorOptions;
+    functions?: cloudfront.BehaviorOptions;
   };
-  /**
-   * Disable the cache for this distribution.
-   * Cache-Control headers will be overridden in responses.
-   */
-  disableCache?: boolean;
-  /**
-   * Disable search indexing for this distribution.
-   * The `X-Robots-Tag: noindex` header will be appended to all responses.
-   * @see https://developers.google.com/search/docs/crawling-indexing/block-indexing
-   */
-  disableSearchIndexing?: boolean;
   /**
    * Create a hosted zone which points at this distribution.
    */
@@ -75,7 +52,7 @@ export interface GatsbyDistributionProps {
   /**
    * Custom CloudFront distribution options.
    */
-  distributionOptions?: EditableDistributionOptions;
+  distributionOptions?: cloudfront.DistributionProps;
   /**
    * Optional custom headers to send to origin.
    */
@@ -93,12 +70,10 @@ export class GatsbyDistribution extends Construct {
       bucket,
       hostedZone,
       cachePolicy,
-      disableCache,
       gatsbyFunctions,
       originCustomHeaders,
       distributionOptions,
       cacheBehaviorOptions,
-      disableSearchIndexing,
     }: GatsbyDistributionProps,
   ) {
     super(scope, id);
@@ -141,50 +116,16 @@ export class GatsbyDistribution extends Construct {
       },
     );
 
-    /**
-     * Create a default response headers policy.
-     * This can be overridden using the cacheBehaviorOptions prop.
-     */
-    const defaultResponseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
-      this,
-      "DefaultResponseHeadersPolicy",
-      {
-        ...cacheBehaviorOptions?.default?.responseHeadersPolicyProps,
-        customHeadersBehavior: {
-          ...cacheBehaviorOptions?.default?.responseHeadersPolicyProps
-            ?.customHeadersBehavior,
-          customHeaders: [
-            ...(cacheBehaviorOptions?.default?.responseHeadersPolicyProps
-              ?.customHeadersBehavior?.customHeaders ?? []),
-            // Override the Cache-Control header to no-store when disable cache is enabled for this distribution.
-            ...(disableCache
-              ? [{ header: "Cache-Control", value: "no-store", override: true }]
-              : []),
-            ...(disableSearchIndexing
-              ? [{ header: "X-Robots-Tag", value: "noindex", override: true }]
-              : []),
-          ],
-        },
-      },
-    );
-
-    // Create base default behavior options (used by all default behaviors).
-    const baseDefaultBehaviorOptions: Pick<
-      cloudfront.BehaviorOptions,
-      "viewerProtocolPolicy" | "responseHeadersPolicy" | "cachePolicy"
-    > = {
-      responseHeadersPolicy: defaultResponseHeadersPolicy,
-      viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-      ...(disableCache
-        ? { cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED }
-        : {}),
-    };
+    // @todo Make this editable to allow non-HTTPS deployments?
+    const viewerProtocolPolicy =
+      cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS;
 
     // Construct default cache behavior.
     const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineFunction
       ? {
           // Default attributes.
           cachePolicy,
+          viewerProtocolPolicy,
           // User attributes.
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
@@ -201,11 +142,11 @@ export class GatsbyDistribution extends Construct {
                     protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
                   },
                 ),
-          ...baseDefaultBehaviorOptions,
         }
       : {
           // Default attributes.
           cachePolicy,
+          viewerProtocolPolicy,
           // User attributes.
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
@@ -216,7 +157,6 @@ export class GatsbyDistribution extends Construct {
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
             },
           ],
-          ...baseDefaultBehaviorOptions,
         };
 
     // Construct distribution props.
@@ -253,10 +193,12 @@ export class GatsbyDistribution extends Construct {
         // Assets must use asset prefix to avoid hitting SSR behavior.
         // https://www.gatsbyjs.com/docs/how-to/previews-deploys-hosting/asset-prefix/
         "/assets/*": {
+          // Default attributes.
+          viewerProtocolPolicy,
+          // Use attributes.
           ...cacheBehaviorOptions?.assets,
+          // Protected attributes.
           origin: new origins.S3Origin(bucket),
-          viewerProtocolPolicy:
-            cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
           functionAssociations: [
             {
               function: staticViewerRequestFn,
@@ -271,6 +213,7 @@ export class GatsbyDistribution extends Construct {
             [gatsbyFunction.name]: {
               // Default attributes.
               cachePolicy,
+              viewerProtocolPolicy,
               // User attributes.
               ...cacheBehaviorOptions?.functions,
               // Protected attributes.
@@ -290,8 +233,6 @@ export class GatsbyDistribution extends Construct {
                           cloudfront.OriginProtocolPolicy.HTTP_ONLY,
                       },
                     ),
-              viewerProtocolPolicy:
-                cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             },
           }),
           {} as Record<string, cloudfront.BehaviorOptions>,
