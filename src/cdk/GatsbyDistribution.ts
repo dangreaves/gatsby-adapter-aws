@@ -39,11 +39,11 @@ export interface GatsbyDistributionProps {
   /** Custom cache behavior options */
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
-    default?: cloudfront.BehaviorOptions;
+    default?: Omit<cloudfront.BehaviorOptions, "origin">;
     /** Cache behavior options for static assets (prefixed by /assets) */
-    assets?: cloudfront.BehaviorOptions;
+    assets?: Omit<cloudfront.BehaviorOptions, "origin">;
     /** Cache behavior options for functions (not including SSR engine) */
-    functions?: cloudfront.BehaviorOptions;
+    functions?: Omit<cloudfront.BehaviorOptions, "origin">;
   };
   /**
    * Create a hosted zone which points at this distribution.
@@ -52,7 +52,10 @@ export interface GatsbyDistributionProps {
   /**
    * Custom CloudFront distribution options.
    */
-  distributionOptions?: cloudfront.DistributionProps;
+  distributionOptions?: Omit<
+    cloudfront.DistributionProps,
+    "defaultBehavior" | "defaultRootObject" | "errorResponses"
+  >;
   /**
    * Optional custom headers to send to origin.
    */
