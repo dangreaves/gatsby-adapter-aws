@@ -1,6 +1,6 @@
 {
   "name": "@dangreaves/gatsby-adapter-aws",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Gatsby adapter for AWS",
   "homepage": "https://github.com/dangreaves/gatsby-adapter-aws#readme",
   "bugs": {
