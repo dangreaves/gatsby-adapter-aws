@@ -463,7 +463,6 @@ new GatsbySite(this, "GatsbySite", {
   additionalDistributions: {
     preview: {
       cachePolicy,
-      disableCache: true,
       distributionOptions: {
         certificate: previewCert,
         domainNames: ["preview.example.com"],
