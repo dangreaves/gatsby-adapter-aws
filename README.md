@@ -184,6 +184,11 @@ new GatsbySite(this, "GatsbySite", {
       return {
         target: "LAMBDA",
         memorySize: 1024, // Increase memory to 1gb
+        functionOptions: {
+          environment: {
+            foo: "bar",
+          },
+        },
       };
     }
 

@@ -57,14 +57,6 @@ export type GatsbyFunctionOptionsLambda = {
    * Provisioned concurrency configuration for the alias.
    */
   provisionedConcurrentExecutions?: lambda.AliasOptions["provisionedConcurrentExecutions"];
-  /**
-   * Environment variables to set within a lambda
-   */
-  environmentVars?: lambda.FunctionOptions["environment"];
-  /**
-   * Lambda layer ARNs to set externsions
-   */
-  lambdaLayerArns?: string[];
 };
 
 export type GatsbyFunctionOptionsFargate = {

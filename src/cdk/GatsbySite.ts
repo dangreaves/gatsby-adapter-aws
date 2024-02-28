@@ -153,15 +153,7 @@ export class GatsbySite extends Construct {
             runtime: lambda.Runtime.NODEJS_18_X,
             code: lambda.Code.fromAsset(fn.functionDir),
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
-            environment: options.environmentVars || {},
-            layers:
-              options.lambdaLayerArns?.map((arn, index) =>
-                lambda.LayerVersion.fromLayerVersionArn(
-                  this,
-                  fn.functionId + index,
-                  arn,
-                ),
-              ) || [],
+            ...options.functionOptions,
           },
         );
 
