@@ -4,5 +4,5 @@
     "noEmit": true,
     "exactOptionalPropertyTypes": false
   },
-  "include": ["src", "tsup.config.ts"]
+  "include": ["src", "*.ts", "*.js"]
 }
