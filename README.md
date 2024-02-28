@@ -28,6 +28,7 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
     4. [Send custom headers to origin](#send-custom-headers-to-origin)
     5. [Configure a hosted zone](#configure-a-hosted-zone)
     6. [Deploying additional distributions](#deploying-additional-distributions)
+11. [Contributors](#contributors)
 
 ## Prerequisites
 
@@ -474,3 +475,23 @@ new GatsbySite(this, "GatsbySite", {
   },
 });
 ```
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/dangreaves"><img src="https://avatars.githubusercontent.com/u/1036142?v=4?s=100" width="100px;" alt="Dan Greaves"/><br /><sub><b>Dan Greaves</b></sub></a><br /><a href="https://github.com/dangreaves/gatsby-adapter-aws/commits?author=dangreaves" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification ([emoji key](https://allcontributors.org/docs/en/emoji-key)). Contributions of any kind welcome!
