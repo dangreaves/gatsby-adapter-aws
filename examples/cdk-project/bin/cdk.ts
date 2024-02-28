@@ -32,4 +32,4 @@ const env: cdk.Environment = {
 /**
  * Deploy Gatsby.
  */
-new GatsbyStack(app, "gatsby", { env, gatsbyDir: "../../examples/ssr" });
+new GatsbyStack(app, "gatsby", { env, gatsbyDir: "../../examples/gatsby-functions" });
