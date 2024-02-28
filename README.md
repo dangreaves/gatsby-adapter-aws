@@ -490,6 +490,7 @@ new GatsbySite(this, "GatsbySite", {
   <tbody>
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/dangreaves"><img src="https://avatars.githubusercontent.com/u/1036142?v=4?s=100" width="100px;" alt="Dan Greaves"/><br /><sub><b>Dan Greaves</b></sub></a><br /><a href="https://github.com/dangreaves/gatsby-adapter-aws/commits?author=dangreaves" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/gssumesh"><img src="https://avatars.githubusercontent.com/u/5582062?v=4?s=100" width="100px;" alt="Sumesh Suvarna"/><br /><sub><b>Sumesh Suvarna</b></sub></a><br /><a href="https://github.com/dangreaves/gatsby-adapter-aws/commits?author=gssumesh" title="Code">💻</a></td>
     </tr>
   </tbody>
 </table>

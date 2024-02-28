@@ -8,6 +8,16 @@
       "avatar_url": "https://avatars.githubusercontent.com/u/1036142?v=4",
       "profile": "https://github.com/dangreaves",
       "contributions": ["code"]
+    },
+    {
+      "login": "gssumesh",
+      "name": "Sumesh Suvarna",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5582062?v=4",
+      "profile": "https://github.com/gssumesh",
+      "contributions": ["code"]
     }
-  ]
+  ],
+  "repoType": "github",
+  "commitConvention": "angular"
 }
+
