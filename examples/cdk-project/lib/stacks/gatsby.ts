@@ -37,17 +37,6 @@ export class GatsbyStack extends cdk.Stack {
     new GatsbySite(this, "GatsbySite", {
       cluster,
       gatsbyDir,
-      gatsbyFunctionOptions: () => {
-        return {
-          target: "LAMBDA",
-          environmentVars: {
-            test: "envvalue",
-          },
-          lambdaLayerArns: [
-            "arn:aws:lambda:ap-southeast-2:665172237481:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11",
-          ],
-        };
-      },
       distribution: { cachePolicy },
       ssrOptions: ssr ? { target: ssr } : undefined,
     });
