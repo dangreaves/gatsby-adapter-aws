@@ -68,6 +68,7 @@ const DEFAULT_GATSBY_FUNCTION_OPTIONS: GatsbyFunctionOptions = {
 export class GatsbySite extends Construct {
   readonly bucket: s3.Bucket;
   readonly distribution: GatsbyDistribution;
+  readonly gatsbyFunctions: GatsbyFunction[];
   readonly additionalDistributions: GatsbyDistribution[] = [];
 
   protected adapterDir: string;
@@ -132,7 +133,7 @@ export class GatsbySite extends Construct {
     }
 
     // Resolve gatsby functions for each manifest function.
-    const gatsbyFunctions = functionsWithOptions.reduce((acc, fn) => {
+    this.gatsbyFunctions = functionsWithOptions.reduce((acc, fn) => {
       const { options, isSsrEngine } = fn;
 
       if ("DISABLED" === options.target) return acc;
@@ -240,7 +241,7 @@ export class GatsbySite extends Construct {
     this.distribution = new GatsbyDistribution(this, "Distribution", {
       ...distribution,
       bucket,
-      gatsbyFunctions,
+      gatsbyFunctions: this.gatsbyFunctions,
     });
 
     // Create additional distributions.
@@ -250,7 +251,7 @@ export class GatsbySite extends Construct {
           new GatsbyDistribution(this, `Distribution-${key}`, {
             ...distribution,
             bucket,
-            gatsbyFunctions,
+            gatsbyFunctions: this.gatsbyFunctions,
           }),
         );
       },
