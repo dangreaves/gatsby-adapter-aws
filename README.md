@@ -19,6 +19,7 @@ This Gatsby [adapter](https://www.gatsbyjs.com/docs/how-to/previews-deploys-host
    1. [Size limits](#size-limits)
    2. [Cache control](#cache-control)
 7. [Gatsby Functions](#gatsby-functions)
+   1. [Accessing Gatsby Function resources](#accessing-gatsby-function-resources)
 8. [Server-side Rendering (SSR)](#server-side-rendering-ssr)
 9. [Cache behavior options](#cache-behavior-options)
 10. [Distribution options](#distribution-options)
@@ -224,6 +225,35 @@ new GatsbySite(this, "GatsbySite", {
     };
   },
 });
+```
+
+### Accessing Gatsby Function resources
+
+You can access the underlying function resources using the `gatsbyFunctions` property on the `GatsbySite` construct.
+
+An example of this would be to grant read access to a Secrets Manager secret.
+
+```ts
+// Resolve secret by ARN.
+const secret = secretsmanager.Secret.fromSecretNameV2(
+  this,
+  "AcmeSecret",
+  "acme-token",
+);
+
+// Create the Gatsby site.
+const gatsbySite = new GatsbySite(this, "GatsbySite", {
+  cluster,
+  gatsbyDir,
+  distribution: { cachePolicy },
+  ssrOptions: ssr ? { target: ssr } : undefined,
+});
+
+// Allow Lambda functions to read secret.
+for (const gatsbyFunction of gatsbySite.gatsbyFunctions) {
+  if ("LAMBDA" !== gatsbyFunction.target) continue;
+  secret.grantRead(gatsbyFunction.lambdaFunction);
+}
 ```
 
 ## Server-side Rendering (SSR)
