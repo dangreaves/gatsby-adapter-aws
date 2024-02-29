@@ -217,6 +217,8 @@ export class GatsbyDistribution extends Construct {
               // Default attributes.
               cachePolicy,
               viewerProtocolPolicy,
+              // Allow all methods for Gatsby function APIs
+              allowedMethods: cloudfront.CloudFrontAllowedMethods.ALL,
               // User attributes.
               ...cacheBehaviorOptions?.functions,
               // Protected attributes.
