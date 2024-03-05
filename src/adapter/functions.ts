@@ -35,7 +35,7 @@ export async function prepareFunction(
      * Usually, we want to have access to process.env, so this puts it back.
      */
     await replaceInFile(targetPath, {
-      from: "({})",
+      from: "/*__GATSBY_PROCESS_REPLACEMENT__*/({})",
       to: "process.env",
     });
 
