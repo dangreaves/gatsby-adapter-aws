@@ -31,17 +31,6 @@ export async function prepareFunction(
     await fs.copy(sourcePath, targetPath);
 
     /**
-     * Gatsby replaces process.env with ({}) in all files, including functions.
-     * Usually, we want to have access to process.env, so this puts it back.
-     */
-    if (/\.js$/.test(requiredFile)) {
-      await replaceInFile(targetPath, {
-        from: "/*__GATSBY_PROCESS_REPLACEMENT__*/({})",
-        to: "process.env",
-      });
-    }
-
-    /**
      * If this is the function index, patch BASE_HEADERS to empty.
      * This sucks, but there's no other way to get rid of security headers
      * from Gatsby without fiddling with every config.
