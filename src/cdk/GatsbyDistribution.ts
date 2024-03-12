@@ -222,6 +222,8 @@ export class GatsbyDistribution extends Construct {
               // User attributes.
               ...cacheBehaviorOptions?.functions,
               // Protected attributes.
+              originRequestPolicy:
+                cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
               origin:
                 "LAMBDA" === gatsbyFunction.target
                   ? new origins.HttpOrigin(
