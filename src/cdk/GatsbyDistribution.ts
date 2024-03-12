@@ -129,6 +129,8 @@ export class GatsbyDistribution extends Construct {
           // Default attributes.
           cachePolicy,
           viewerProtocolPolicy,
+          originRequestPolicy:
+            cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           // User attributes.
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
@@ -217,13 +219,13 @@ export class GatsbyDistribution extends Construct {
               // Default attributes.
               cachePolicy,
               viewerProtocolPolicy,
+              originRequestPolicy:
+                cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
               // Allow all methods for Gatsby function APIs
               allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
               // User attributes.
               ...cacheBehaviorOptions?.functions,
               // Protected attributes.
-              originRequestPolicy:
-                cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
               origin:
                 "LAMBDA" === gatsbyFunction.target
                   ? new origins.HttpOrigin(
