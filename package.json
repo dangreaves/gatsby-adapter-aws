@@ -35,7 +35,8 @@
     "esbuild": "^0.20.0",
     "fs-extra": "^11.2.0",
     "mime": "^4.0.1",
-    "minimatch": "^9.0.3"
+    "minimatch": "^9.0.3",
+    "nanoid": "^5.0.6"
   },
   "devDependencies": {
     "@eslint/js": "^8.57.0",

@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import path from "node:path";
 import { Construct } from "constructs";
+import { customAlphabet } from "nanoid";
 
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -24,6 +25,8 @@ import type {
 } from "../types.js";
 
 import { SSR_ENGINE_FUNCTION_ID } from "../constants.js";
+
+const nanoid = customAlphabet("1234567890abcdefhijklmnopqrstuvxyz", 10);
 
 export type GatsbyDistributionOptions = Omit<
   GatsbyDistributionProps,
@@ -57,7 +60,27 @@ export interface GatsbySiteProps {
   bucketDeploymentOptions?: Pick<
     s3deploy.BucketDeploymentProps,
     "ephemeralStorageSize" | "memoryLimit"
-  >;
+  > & {
+    /**
+     * Force asset deployment even if the source files have not changed.
+     *
+     * For each asset group, the BucketDeployment construct keeps a hash of the source zip
+     * in CloudFormation state. This hash is derived from the contents of the files.
+     *
+     * If the source files do not change, then the hash stays the same between deployments,
+     * and thus the BucketDeployment for that group will not run.
+     *
+     * If you manually delete files from S3, this means the file will be gone from the
+     * bucket, but the source hash won't have changed, so CloudFormation will not
+     * execute the BucketDeployment to put it back again.
+     *
+     * Enabling this option will change the construct ID for the BucketDeployment between
+     * deployments, thus always uploading every file, on every deployment. This means you
+     * can freely delete files from S3, and they will be re-uploaded on the next deploy
+     * at the cost of slower deployments.
+     */
+    forceDeployment?: boolean;
+  };
 }
 
 /** Gatsby Functions run in Lambda by default. */
@@ -270,10 +293,28 @@ export class GatsbySite extends Construct {
    */
   protected createBucketDeployments({
     memoryLimit,
+    forceDeployment,
     ephemeralStorageSize,
   }: GatsbySiteProps["bucketDeploymentOptions"] = {}) {
     for (const assetGroup of this.manifest.assetGroups) {
-      new s3deploy.BucketDeployment(this, `Deployment-${assetGroup.hash}`, {
+      /**
+       * If forceDeployment enabled, use a random construct ID, which will create a new
+       * deployment each time, forcing files to be uploaded again, regardless of the
+       * source hash.
+       *
+       * If forceDeployment not enabled, then use the asset group hash, which is derived
+       * from the contentType and cacheControl headers. This means it will not change
+       * between deployments, thus a hash of the source files will be stored in
+       * CloudFormation for the construct between deployments.
+       *
+       * In cases where the source files do not change (the hash stays the same), the
+       * construct will not be run, and files will not be re-uploaded.
+       */
+      const constructId = forceDeployment
+        ? `Deployment-${nanoid()}`
+        : `Deployment-${assetGroup.hash}`;
+
+      new s3deploy.BucketDeployment(this, constructId, {
         prune: false,
         destinationBucket: this.bucket,
         contentType: assetGroup.contentType,
