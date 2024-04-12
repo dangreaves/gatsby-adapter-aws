@@ -35,6 +35,14 @@ app.disable("x-powered-by");
 
 // Register a route which listens to all requests.
 app.all("*", async (req, res) => {
+  /**
+   * Gatsby matches page routes using req.url.
+   * If query params are added, you end up with a req.url like /foo?q=bar.
+   * Gatsby is not smart enough to match this to the /foo route, so you end up with a 404.
+   * Here, we remove the query param from req.url by setting it to req.path.
+   */
+  req.url = req.path;
+
   await gatsbyHandler(req, res);
 });
 
