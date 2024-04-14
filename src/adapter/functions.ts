@@ -49,6 +49,40 @@ export async function prepareFunction(
   const entryPointDir = path.dirname(fn.pathToEntryPoint);
   const entryPointName = path.basename(fn.pathToEntryPoint);
 
+  /**
+   * For the "ssr-engine" function, the results of static queries need to
+   * be packed with the function.
+   *
+   * Most static queries are included in the "requiredFiles" part of the
+   * functions manifest, and copied above.
+   *
+   * However, in some circumstances, Gatsby does not add the file to the
+   * "requiredFiles" attribute, resulting in a runtime error when it's
+   * required by the Gatsby code.
+   *
+   * Here, we are copying *all* static query results into the "ssr-engine"
+   * function, regardless of if they are included in the "requiredFiles"
+   * attribute on the function.
+   */
+  await (async () => {
+    if ("ssr-engine" !== fn.functionId) return;
+
+    const staticQueryDir = path.join(gatsbyDir, "public/page-data/sq/d");
+    if (!(await fs.pathExists(staticQueryDir))) return;
+
+    const targetQueryDir = path.join(functionDir, entryPointDir, "sq");
+    await fs.ensureDir(targetQueryDir);
+
+    for (const filename of await getAllFiles({
+      baseDir: staticQueryDir,
+      dirPath: staticQueryDir,
+    })) {
+      const sourcePath = path.join(staticQueryDir, filename);
+      const targetPath = path.join(targetQueryDir, filename);
+      await fs.copy(sourcePath, targetPath);
+    }
+  })();
+
   // Set function dir to CJS (all Gatsby generated files are CJS).
   await fs.writeJSON(path.join(functionDir, "package.json"), {
     type: "commonjs",
