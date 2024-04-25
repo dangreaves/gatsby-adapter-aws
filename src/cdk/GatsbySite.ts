@@ -227,6 +227,7 @@ export class GatsbySite extends Construct {
           {
             cluster,
             cpu: options.cpu ?? 1024,
+            desiredCount: options.desiredCount ?? 1,
             memoryLimitMiB: options.memoryLimitMiB ?? 2048,
             circuitBreaker: { rollback: true },
             taskImageOptions: {

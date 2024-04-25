@@ -71,6 +71,11 @@ export type GatsbyFunctionOptionsFargate = {
    * Defaults to 2048 (2 GB) for all tasks.
    */
   memoryLimitMiB?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["memoryLimitMiB"];
+  /**
+   * The desired number of instantiations of the task definition to keep running on the service.
+   * Defaults to 1 task.
+   */
+  desiredCount?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["desiredCount"];
 };
 
 export type GatsbyFunction = GatsbyFunctionLambda | GatsbyFunctionFargate;
