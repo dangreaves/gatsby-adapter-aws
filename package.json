@@ -32,7 +32,7 @@
     "contributors:generate": "all-contributors generate"
   },
   "dependencies": {
-    "esbuild": "^0.20.0",
+    "esbuild": "^0.21.2",
     "fs-extra": "^11.2.0",
     "mime": "^4.0.1",
     "minimatch": "^9.0.3",
