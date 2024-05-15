@@ -157,6 +157,7 @@ export class GatsbyDistribution extends Construct {
           // Protected attributes.
           origin: new origins.S3Origin(bucket),
           functionAssociations: [
+            ...(cacheBehaviorOptions?.default?.functionAssociations ?? []),
             {
               function: staticViewerRequestFn,
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
@@ -205,6 +206,7 @@ export class GatsbyDistribution extends Construct {
           // Protected attributes.
           origin: new origins.S3Origin(bucket),
           functionAssociations: [
+            ...(cacheBehaviorOptions?.assets?.functionAssociations ?? []),
             {
               function: staticViewerRequestFn,
               eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
