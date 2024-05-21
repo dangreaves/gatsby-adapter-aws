@@ -226,6 +226,7 @@ export class GatsbySite extends Construct {
           `Service-${fn.functionId}`,
           {
             cluster,
+            minHealthyPercent: 100, // Always keep desired task count.
             cpu: options.cpu ?? 1024,
             desiredCount: options.desiredCount ?? 1,
             memoryLimitMiB: options.memoryLimitMiB ?? 2048,
