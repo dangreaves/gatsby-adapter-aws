@@ -6,6 +6,7 @@ import { customAlphabet } from "nanoid";
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
@@ -175,6 +176,7 @@ export class GatsbySite extends Construct {
                 : cdk.Duration.minutes(1),
             memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
             runtime: lambda.Runtime.NODEJS_18_X,
+            logRetention: logs.RetentionDays.ONE_MONTH,
             code: lambda.Code.fromAsset(fn.functionDir),
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
             ...options.functionOptions,
@@ -233,6 +235,10 @@ export class GatsbySite extends Construct {
             circuitBreaker: { rollback: true },
             taskImageOptions: {
               image: ecs.ContainerImage.fromAsset(fn.functionDir),
+              logDriver: new ecs.AwsLogDriver({
+                streamPrefix: `Service-${fn.functionId}`,
+                logRetention: logs.RetentionDays.ONE_MONTH,
+              }),
             },
           },
         );
