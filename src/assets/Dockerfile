@@ -6,4 +6,6 @@ WORKDIR /app
 
 COPY . .
 
+ENV NODE_ENV=production
+
 ENTRYPOINT node __HANDLER_PATH__
