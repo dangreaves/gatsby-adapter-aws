@@ -40,6 +40,8 @@ export interface GatsbyDistributionProps {
   cacheBehaviorOptions?: {
     /** Cache behavior options for default route (including SSR engine) */
     default?: Omit<cloudfront.BehaviorOptions, "origin">;
+    /** Cache behavior options for page-data endpoints */
+    pageData?: Omit<cloudfront.BehaviorOptions, "origin">;
     /** Cache behavior options for static assets (prefixed by /assets) */
     assets?: Omit<cloudfront.BehaviorOptions, "origin">;
     /** Cache behavior options for functions (not including SSR engine) */
@@ -123,6 +125,35 @@ export class GatsbyDistribution extends Construct {
     const viewerProtocolPolicy =
       cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS;
 
+    // Determine if a custom viewer request function is provided.
+    const hasCustomViewerRequestFunction = {
+      default: !!(
+        cacheBehaviorOptions?.default?.functionAssociations ?? []
+      ).find(
+        (fn) => cloudfront.FunctionEventType.VIEWER_REQUEST === fn.eventType,
+      ),
+      pageData: !!(
+        cacheBehaviorOptions?.pageData?.functionAssociations ?? []
+      ).find(
+        (fn) => cloudfront.FunctionEventType.VIEWER_REQUEST === fn.eventType,
+      ),
+      assets: !!(cacheBehaviorOptions?.assets?.functionAssociations ?? []).find(
+        (fn) => cloudfront.FunctionEventType.VIEWER_REQUEST === fn.eventType,
+      ),
+    };
+
+    // Compute the default origin.
+    const origin = ssrEngineFunction
+      ? "LAMBDA" === ssrEngineFunction.target
+        ? new origins.HttpOrigin(ssrEngineFunction.lambdaFunctionUrlDomain, {
+            customHeaders: originCustomHeaders,
+          })
+        : new origins.LoadBalancerV2Origin(ssrEngineFunction.loadBalancer, {
+            customHeaders: originCustomHeaders,
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          })
+      : new origins.S3Origin(bucket);
+
     // Construct default cache behavior.
     const defaultBehavior: cloudfront.BehaviorOptions = ssrEngineFunction
       ? {
@@ -134,19 +165,7 @@ export class GatsbyDistribution extends Construct {
           // User attributes.
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
-          origin:
-            "LAMBDA" === ssrEngineFunction.target
-              ? new origins.HttpOrigin(
-                  ssrEngineFunction.lambdaFunctionUrlDomain,
-                  { customHeaders: originCustomHeaders },
-                )
-              : new origins.LoadBalancerV2Origin(
-                  ssrEngineFunction.loadBalancer,
-                  {
-                    customHeaders: originCustomHeaders,
-                    protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
-                  },
-                ),
+          origin,
         }
       : {
           // Default attributes.
@@ -155,15 +174,48 @@ export class GatsbyDistribution extends Construct {
           // User attributes.
           ...cacheBehaviorOptions?.default,
           // Protected attributes.
-          origin: new origins.S3Origin(bucket),
+          origin,
           functionAssociations: [
             ...(cacheBehaviorOptions?.default?.functionAssociations ?? []),
-            {
-              function: staticViewerRequestFn,
-              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-            },
+            // If there is no custom VIEWER_REQUEST function, add the default one.
+            ...(!hasCustomViewerRequestFunction["default"]
+              ? [
+                  {
+                    function: staticViewerRequestFn,
+                    eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+                  },
+                ]
+              : []),
           ],
         };
+
+    // Construct page-data cache behavior (only used when SSR engine enabled)
+    const pageDataBehavior: cloudfront.BehaviorOptions | null =
+      ssrEngineFunction
+        ? {
+            // Default attributes.
+            cachePolicy,
+            viewerProtocolPolicy,
+            originRequestPolicy:
+              cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+            // User attributes.
+            ...cacheBehaviorOptions?.pageData,
+            // Protected attributes.
+            origin,
+            functionAssociations: [
+              ...(cacheBehaviorOptions?.pageData?.functionAssociations ?? []),
+              // If there is no custom VIEWER_REQUEST function, add the default one.
+              ...(!hasCustomViewerRequestFunction["pageData"]
+                ? [
+                    {
+                      function: pageDataViewerRequestFn,
+                      eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+                    },
+                  ]
+                : []),
+            ],
+          }
+        : null;
 
     // Construct distribution props.
     const distributionProps: cloudfront.DistributionProps = {
@@ -182,18 +234,9 @@ export class GatsbyDistribution extends Construct {
       additionalBehaviors: {
         // Gatsby puts page-data files into the asset prefix, but we actually need these to go
         // to the SSR engine instead, with the asset prefix trimmed off.
-        ...(ssrEngineFunction
+        ...(pageDataBehavior
           ? {
-              "*page-data.json": {
-                ...defaultBehavior,
-                functionAssociations: [
-                  ...(defaultBehavior.functionAssociations ?? []),
-                  {
-                    function: pageDataViewerRequestFn,
-                    eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-                  },
-                ],
-              },
+              "*page-data.json": pageDataBehavior,
             }
           : {}),
         // Assets must use asset prefix to avoid hitting SSR behavior.
@@ -207,10 +250,15 @@ export class GatsbyDistribution extends Construct {
           origin: new origins.S3Origin(bucket),
           functionAssociations: [
             ...(cacheBehaviorOptions?.assets?.functionAssociations ?? []),
-            {
-              function: staticViewerRequestFn,
-              eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
-            },
+            // If there is no custom VIEWER_REQUEST function, add the default one.
+            ...(!hasCustomViewerRequestFunction["assets"]
+              ? [
+                  {
+                    function: staticViewerRequestFn,
+                    eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+                  },
+                ]
+              : []),
           ],
         },
         // Add a new behavior for each additional function.
