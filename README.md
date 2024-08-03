@@ -309,9 +309,10 @@ CloudFront uses [cache behaviors](https://docs.aws.amazon.com/cloudfront/latest/
 
 This adapter deals with wiring up the various cache behaviors to send requests to the S3 bucket (for static assets), Lambda and Elastic Container Service (for Gatsby Functions and/or SSR).
 
-There are three types of cache behavior.
+There are four types of cache behavior.
 
 - `default` - The cache behavior which most requests will hit. For static sites, this will use S3 as the origin, and for SSR sites, this will use the SSR handler as the origin.
+- `page-data` - Special cache behavior for `page-data` requests, which technically look like assets, but actually get routed to the SSR handler. This behavior is not used for static deployments.
 - `assets` - The cache behavior associated with static assets. This uses the `/assets` prefix, and always points to S3 as the origin.
 - `functions` - Individual cache behaviors created for each function. These use the function name as the path (e.g. `/api/foo`) and point to either Lambda or Fargate as the origin.
 
