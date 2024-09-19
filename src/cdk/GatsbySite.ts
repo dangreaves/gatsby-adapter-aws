@@ -187,6 +187,7 @@ export class GatsbySite extends Construct {
                   ...functionOptions,
                   architecture: lambda.Architecture.X86_64,
                   code: lambda.DockerImageCode.fromImageAsset(fn.functionDir, {
+                    target: "lambda",
                     platform: ecrAssets.Platform.LINUX_AMD64,
                   }),
                 },
