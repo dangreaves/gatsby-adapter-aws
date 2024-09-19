@@ -8,6 +8,7 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as ecrAssets from "aws-cdk-lib/aws-ecr-assets";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 
@@ -162,22 +163,21 @@ export class GatsbySite extends Construct {
 
       if ("DISABLED" === options.target) return acc;
 
-      const entryPointDir = path.dirname(fn.pathToEntryPoint);
-
       if ("LAMBDA" === options.target) {
-        const lambdaFunction = new lambda.Function(
+        const lambdaFunction = new lambda.DockerImageFunction(
           this,
           `Function-${fn.functionId}`,
           {
-            handler: `${entryPointDir}/handler.handler`,
             timeout:
               options.timeout ?? isSsrEngine
                 ? cdk.Duration.seconds(30)
                 : cdk.Duration.minutes(1),
+            architecture: lambda.Architecture.X86_64,
             memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
-            runtime: lambda.Runtime.NODEJS_18_X,
             logRetention: logs.RetentionDays.ONE_MONTH,
-            code: lambda.Code.fromAsset(fn.functionDir),
+            code: lambda.DockerImageCode.fromImageAsset(fn.functionDir, {
+              platform: ecrAssets.Platform.LINUX_AMD64,
+            }),
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
             ...options.functionOptions,
           },
@@ -233,8 +233,15 @@ export class GatsbySite extends Construct {
             desiredCount: options.desiredCount ?? 1,
             memoryLimitMiB: options.memoryLimitMiB ?? 2048,
             circuitBreaker: { rollback: true },
+            runtimePlatform: {
+              cpuArchitecture: ecs.CpuArchitecture.X86_64,
+              operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+            },
             taskImageOptions: {
-              image: ecs.ContainerImage.fromAsset(fn.functionDir),
+              containerPort: 8080,
+              image: ecs.ContainerImage.fromAsset(fn.functionDir, {
+                platform: ecrAssets.Platform.LINUX_AMD64,
+              }),
               logDriver: new ecs.AwsLogDriver({
                 streamPrefix: `Service-${fn.functionId}`,
                 logRetention: logs.RetentionDays.ONE_MONTH,

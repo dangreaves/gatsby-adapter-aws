@@ -1,5 +1,4 @@
 import express from "express";
-import { configure } from "@vendia/serverless-express";
 
 import type { Request, Response } from "express";
 
@@ -46,14 +45,6 @@ app.all("*", async (req, res) => {
   await gatsbyHandler(req, res);
 });
 
-/**
- * Export the express app with a Lambda wrapper which converts the Lambda
- * HTTP event into express-like req/res objects.
- */
-export const handler = configure({ app });
+const port = process.env["PORT"] ?? 8080;
 
-// Start a listener if we are not in a Lambda function (e.g. ECS).
-if ("undefined" === typeof process.env["AWS_LAMBDA_FUNCTION_NAME"]) {
-  const port = process.env["PORT"] ?? 80;
-  app.listen(port, () => console.log(`Server listening on port ${port}.`));
-}
+app.listen(port, () => console.log(`Server listening on port ${port}.`));
