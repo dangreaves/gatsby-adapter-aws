@@ -176,6 +176,7 @@ export class GatsbySite extends Construct {
             memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
             logRetention: logs.RetentionDays.ONE_MONTH,
             code: lambda.DockerImageCode.fromImageAsset(fn.functionDir, {
+              target: "lambda",
               platform: ecrAssets.Platform.LINUX_AMD64,
             }),
             insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
@@ -240,6 +241,7 @@ export class GatsbySite extends Construct {
             taskImageOptions: {
               containerPort: 8080,
               image: ecs.ContainerImage.fromAsset(fn.functionDir, {
+                target: "base",
                 platform: ecrAssets.Platform.LINUX_AMD64,
               }),
               logDriver: new ecs.AwsLogDriver({
