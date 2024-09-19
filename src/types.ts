@@ -57,6 +57,12 @@ export type GatsbyFunctionOptionsLambda = {
    * Provisioned concurrency configuration for the alias.
    */
   provisionedConcurrentExecutions?: lambda.AliasOptions["provisionedConcurrentExecutions"];
+  /**
+   * If set to "ZIP", function will be packaged as a zip, so can use layers.
+   * If set to "DOCKER", function will be packaged as a docker image, so cannot use layers.
+   * @default "ZIP"
+   */
+  packaging?: "ZIP" | "DOCKER";
 };
 
 export type GatsbyFunctionOptionsFargate = {

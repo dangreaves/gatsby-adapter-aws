@@ -164,25 +164,39 @@ export class GatsbySite extends Construct {
       if ("DISABLED" === options.target) return acc;
 
       if ("LAMBDA" === options.target) {
-        const lambdaFunction = new lambda.DockerImageFunction(
-          this,
-          `Function-${fn.functionId}`,
-          {
-            timeout:
-              options.timeout ?? isSsrEngine
-                ? cdk.Duration.seconds(30)
-                : cdk.Duration.minutes(1),
-            architecture: lambda.Architecture.X86_64,
-            memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
-            logRetention: logs.RetentionDays.ONE_MONTH,
-            code: lambda.DockerImageCode.fromImageAsset(fn.functionDir, {
-              target: "lambda",
-              platform: ecrAssets.Platform.LINUX_AMD64,
-            }),
-            insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
-            ...options.functionOptions,
-          },
-        );
+        const entryPointDir = path.dirname(fn.pathToEntryPoint);
+
+        const functionOptions: lambda.FunctionOptions = {
+          timeout:
+            options.timeout ?? isSsrEngine
+              ? cdk.Duration.seconds(30)
+              : cdk.Duration.minutes(1),
+          architecture: lambda.Architecture.X86_64,
+          memorySize: options.memorySize ?? isSsrEngine ? 1024 : 512,
+          logRetention: logs.RetentionDays.ONE_MONTH,
+          insightsVersion: lambda.LambdaInsightsVersion.VERSION_1_0_229_0,
+          ...options.functionOptions,
+        };
+
+        const lambdaFunction =
+          "DOCKER" === options.packaging
+            ? new lambda.DockerImageFunction(
+                this,
+                `Function-${fn.functionId}`,
+                {
+                  ...functionOptions,
+                  architecture: lambda.Architecture.X86_64,
+                  code: lambda.DockerImageCode.fromImageAsset(fn.functionDir, {
+                    platform: ecrAssets.Platform.LINUX_AMD64,
+                  }),
+                },
+              )
+            : new lambda.Function(this, `Function-${fn.functionId}`, {
+                ...functionOptions,
+                runtime: lambda.Runtime.NODEJS_20_X,
+                code: lambda.Code.fromAsset(fn.functionDir),
+                handler: `${entryPointDir}/handler.handler`,
+              });
 
         const lambdaAlias = lambdaFunction.addAlias("current", {
           ...(options.provisionedConcurrentExecutions
