@@ -112,6 +112,18 @@ export async function prepareFunction(
     to: path.join(entryPointDir, "handler.js"),
   });
 
+  // Copy run file.
+  await fs.copyFile(
+    path.join(__dirname, "../assets/run.sh"),
+    path.join(functionDir, "run.sh"),
+  );
+
+  // Replace entrypoint in run file.
+  await replaceInFile(path.join(functionDir, "run.sh"), {
+    from: "__HANDLER_PATH__",
+    to: path.join(entryPointDir, "handler.js"),
+  });
+
   // Bundle handler using esbuild.
   await esbuild.build({
     bundle: true,
@@ -169,6 +181,8 @@ const ALLOWED_PATTERNS: string[] = [
   "public/**/*",
   // Required for docker targets (e.g. Fargate).
   "Dockerfile",
+  // Required for AWS Lambda Web Adapter.
+  "run.sh",
 ];
 
 /**

@@ -157,6 +157,17 @@ export class GatsbySite extends Construct {
       );
     }
 
+    /**
+     * Lambda layer for web adapter.
+     * For docker packaged lambda functions, this is baked into the container image.
+     * @see https://github.com/awslabs/aws-lambda-web-adapter
+     */
+    const webAdapterLayer = lambda.LayerVersion.fromLayerVersionArn(
+      this,
+      "SecretsLayer",
+      `arn:aws:lambda:${cdk.Aws.REGION}:753240598075:layer:LambdaAdapterLayerX86:23`,
+    );
+
     // Resolve gatsby functions for each manifest function.
     this.gatsbyFunctions = functionsWithOptions.reduce((acc, fn) => {
       const { options, isSsrEngine } = fn;
@@ -164,8 +175,6 @@ export class GatsbySite extends Construct {
       if ("DISABLED" === options.target) return acc;
 
       if ("LAMBDA" === options.target) {
-        const entryPointDir = path.dirname(fn.pathToEntryPoint);
-
         const functionOptions: lambda.FunctionOptions = {
           timeout:
             options.timeout ?? isSsrEngine
@@ -194,9 +203,15 @@ export class GatsbySite extends Construct {
               )
             : new lambda.Function(this, `Function-${fn.functionId}`, {
                 ...functionOptions,
+                handler: "run.sh",
                 runtime: lambda.Runtime.NODEJS_20_X,
                 code: lambda.Code.fromAsset(fn.functionDir),
-                handler: `${entryPointDir}/handler.handler`,
+                layers: [webAdapterLayer, ...(functionOptions.layers ?? [])],
+                environment: {
+                  ...functionOptions.environment,
+                  // Required by web adapter.
+                  AWS_LAMBDA_EXEC_WRAPPER: "/opt/bootstrap",
+                },
               });
 
         const lambdaAlias = lambdaFunction.addAlias("current", {
