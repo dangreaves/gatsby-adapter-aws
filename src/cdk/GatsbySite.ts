@@ -209,8 +209,9 @@ export class GatsbySite extends Construct {
                 layers: [webAdapterLayer, ...(functionOptions.layers ?? [])],
                 environment: {
                   ...functionOptions.environment,
-                  // Required by web adapter.
+                  // Configuration for AWS Lambda Web Adapter.
                   AWS_LAMBDA_EXEC_WRAPPER: "/opt/bootstrap",
+                  AWS_LWA_READINESS_CHECK_PATH: "/__ping",
                 },
               });
 

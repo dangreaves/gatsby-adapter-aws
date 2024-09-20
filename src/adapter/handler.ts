@@ -32,6 +32,14 @@ const app = express();
 // Disable X-Powered-By header.
 app.disable("x-powered-by");
 
+/**
+ * Endpoint used by AWS Lambda Web Adapter for readiness checks.
+ * @see https://github.com/awslabs/aws-lambda-web-adapter#readiness-check
+ */
+app.get("/__ping", (_req, res) => {
+  res.status(200).send("Pong");
+});
+
 // Register a route which listens to all requests.
 app.all("*", async (req, res) => {
   /**
