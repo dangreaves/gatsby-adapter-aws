@@ -1,3 +1,4 @@
+import cookie from "cookie";
 import express from "express";
 
 import type { Request, Response } from "express";
@@ -42,6 +43,12 @@ app.get("/__ping", (_req, res) => {
 
 // Register a route which listens to all requests.
 app.all("*", async (req, res) => {
+  // Parse cookies from header.
+  const cookies = req.headers.cookie;
+  if (cookies) {
+    req.cookies = cookie.parse(cookies);
+  }
+
   /**
    * Gatsby matches page routes using req.url.
    * If query params are added, you end up with a req.url like /foo?q=bar.
