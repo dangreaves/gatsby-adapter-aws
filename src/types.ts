@@ -96,6 +96,7 @@ export interface GatsbyFunctionLambda extends BaseGatsbyFunction {
 
 export interface GatsbyFunctionFargate extends BaseGatsbyFunction {
   target: "FARGATE";
+  taskDefinition: ecs.TaskDefinition;
   fargateService: ecs.IFargateService;
   loadBalancer: elb.IApplicationLoadBalancer;
 }

@@ -289,6 +289,7 @@ export class GatsbySite extends Construct {
           target: "FARGATE",
           fargateService: service.service,
           loadBalancer: service.loadBalancer,
+          taskDefinition: service.taskDefinition,
         };
 
         return [...acc, gatsbyFunction];
