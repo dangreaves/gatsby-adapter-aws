@@ -82,6 +82,14 @@ export type GatsbyFunctionOptionsFargate = {
    * Defaults to 1 task.
    */
   desiredCount?: ecsPatterns.ApplicationLoadBalancedFargateServiceProps["desiredCount"];
+  /**
+   * The environment variables to pass to the container.
+   */
+  environment?: ecsPatterns.ApplicationLoadBalancedTaskImageOptions["environment"];
+  /**
+   * Secrets to expose to the container as environment variable.
+   */
+  secrets?: ecsPatterns.ApplicationLoadBalancedTaskImageOptions["secrets"];
 };
 
 export type GatsbyFunction = GatsbyFunctionLambda | GatsbyFunctionFargate;

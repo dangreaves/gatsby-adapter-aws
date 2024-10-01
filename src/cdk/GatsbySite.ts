@@ -279,6 +279,10 @@ export class GatsbySite extends Construct {
                 streamPrefix: `Service-${fn.functionId}`,
                 logRetention: logs.RetentionDays.ONE_MONTH,
               }),
+              ...(options.environment
+                ? { environment: options.environment }
+                : {}),
+              ...(options.secrets ? { secrets: options.secrets } : {}),
             },
           },
         );
