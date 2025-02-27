@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/node:20 AS base
+FROM public.ecr.aws/docker/library/node:22 AS base
 
 ENV PORT=8080
 

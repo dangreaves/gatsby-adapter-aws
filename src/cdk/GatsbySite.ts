@@ -204,7 +204,7 @@ export class GatsbySite extends Construct {
             : new lambda.Function(this, `Function-${fn.functionId}`, {
                 ...functionOptions,
                 handler: "run.sh",
-                runtime: lambda.Runtime.NODEJS_20_X,
+                runtime: lambda.Runtime.NODEJS_22_X,
                 code: lambda.Code.fromAsset(fn.functionDir),
                 layers: [webAdapterLayer, ...(functionOptions.layers ?? [])],
                 environment: {
