@@ -265,7 +265,8 @@ export class GatsbyDistribution extends Construct {
         ...additionalFunctions.reduce(
           (acc, gatsbyFunction) => ({
             ...acc,
-            [gatsbyFunction.name]: {
+            // Convert splat routes like /api/foo/[...] to /api/foo/*
+            [gatsbyFunction.name.replace("[...]", "*")]: {
               // Default attributes.
               cachePolicy,
               viewerProtocolPolicy,
