@@ -1,5 +1,5 @@
-import cookie from "cookie";
 import express from "express";
+import { parse as parseCookies } from "cookie";
 
 import type { Request, Response } from "express";
 
@@ -46,7 +46,7 @@ app.all("*", async (req, res) => {
   // Parse cookies from header.
   const cookies = req.headers.cookie;
   if (cookies) {
-    req.cookies = cookie.parse(cookies);
+    req.cookies = parseCookies(cookies);
   }
 
   /**

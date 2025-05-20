@@ -62,7 +62,7 @@
   "peerDependencies": {
     "aws-cdk-lib": "^2.181.0",
     "constructs": "^10.4.2",
-    "cookie": "^0.6.0",
+    "cookie": "^1.0.2",
     "express": "^4.21.0"
   },
   "workspaces": [
